@@ -1,8 +1,10 @@
 # Documentation
 
+Start here: **[GETTING_STARTED.md](GETTING_STARTED.md)** (hardware, flash, run twin).
+
 | Doc | Contents |
 |-----|----------|
-| [GETTING_STARTED.md](GETTING_STARTED.md) | Wire → flash → run twin |
+| [GETTING_STARTED.md](GETTING_STARTED.md) | Hardware, wire → flash → run twin |
 | [USER_GUIDE.md](USER_GUIDE.md) | Tabs, IK, troubleshooting |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview |
 | [API.md](API.md) | HTTP endpoints |
