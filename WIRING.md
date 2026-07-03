@@ -2,7 +2,7 @@
 
 **Board:** [Waveshare ESP32-S3-DEV-KIT-N8R8](https://www.waveshare.com/wiki/ESP32-S3-DEV-KIT-N8R8) (DevKitC-1 compatible)  
 **Control:** common-cathode — GPIO → PUL+/DIR+, GND → PUL−/DIR−  
-**Firmware:** `esp32_dm542_stepper_test/src/main.cpp`
+**Firmware:** `firmware/src/main.cpp`
 
 ## GPIO map
 
@@ -70,13 +70,6 @@ Find coil pairs with a multimeter. Example (motor 1):
 ## Driver DIP (power off)
 
 Match nameplate current. Microstepping 1/8 or 1/16. DM542 (8 DIP) and TB6600/Meccanixity (6 DIP) use different tables.
-
-## Bench test limits
-
-```powershell
-cd esp32_limit_switch_test
-pio run -t upload
-```
 
 ## Troubleshooting
 

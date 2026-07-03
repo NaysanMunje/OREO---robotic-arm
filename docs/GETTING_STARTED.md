@@ -26,7 +26,7 @@ Follow **[../WIRING.md](../WIRING.md)**. Set driver DIP switches with power off.
 ## 2. Flash firmware
 
 ```powershell
-cd esp32_dm542_stepper_test
+cd firmware
 copy include\wifi_secrets.h.example include\wifi_secrets.h
 # edit wifi_secrets.h with your SSID and password
 pio run -t upload
@@ -63,10 +63,8 @@ On Windows you can also double-click **`arm_twin/Start Arm Twin.bat`**.
 
 | Path | What's inside |
 |------|---------------|
+| [`firmware/`](../firmware/) | ESP32 firmware — WiFi, motors, homing, HTTP API |
 | [`arm_twin/`](../arm_twin/) | FastAPI server + Three.js browser UI |
-| [`esp32_dm542_stepper_test/`](../esp32_dm542_stepper_test/) | Production ESP32 firmware — WiFi, homing, HTTP API |
-| [`esp32_limit_switch_test/`](../esp32_limit_switch_test/) | Bench sketch for verifying limit-switch wiring |
-| [`esp32_s3_test/`](../esp32_s3_test/) | Minimal ESP32-S3 bring-up sketch |
 | [`docs/`](./) | Setup, user guide, API, architecture |
 | [`WIRING.md`](../WIRING.md) | GPIO map, driver + limit-switch wiring |
 

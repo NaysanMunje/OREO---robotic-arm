@@ -9,7 +9,7 @@ Browser (Three.js UI)
 PC twin server  (arm_twin/main.py — FastAPI + httpx)
       │  HTTP over WiFi
       ▼
-ESP32 firmware  (esp32_dm542_stepper_test — mDNS "arm.local")
+ESP32 firmware  (firmware/ — mDNS "arm.local")
       │  GPIO PUL/DIR
       ▼
 4× DM542 drivers → 4× stepper motors
@@ -32,7 +32,7 @@ ESP32 firmware  (esp32_dm542_stepper_test — mDNS "arm.local")
 
 | Concern | File |
 |---------|------|
-| Firmware stepping / homing | [`esp32_dm542_stepper_test/src/main.cpp`](../esp32_dm542_stepper_test/src/main.cpp) |
+| Firmware stepping / homing | [`firmware/src/main.cpp`](../firmware/src/main.cpp) |
 | GPIO / driver / limit wiring | [`WIRING.md`](../WIRING.md) |
 | Twin HTTP server | [`arm_twin/main.py`](../arm_twin/main.py) |
 | Twin browser UI (3D, sliders, IK) | [`arm_twin/static/index.html`](../arm_twin/static/index.html) |
@@ -42,7 +42,7 @@ ESP32 firmware  (esp32_dm542_stepper_test — mDNS "arm.local")
 
 Two places store per-joint constants and both need to match, or the twin will display something different from what the arm actually does:
 
-| Twin (`arm_twin/config.json`) | Firmware (`esp32_dm542_stepper_test/src/main.cpp`) |
+| Twin (`arm_twin/config.json`) | Firmware (`firmware/src/main.cpp`) |
 |-------------------------------|-----------------------------------------------------|
 | `steps_per_degree[]` | `STEPS_PER_DEGREE[]` |
 | joint `min_deg` / `max_deg` | `MAX_TRAVEL_DEG[]` |

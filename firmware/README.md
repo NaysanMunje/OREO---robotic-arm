@@ -1,6 +1,6 @@
-# ESP32 arm firmware
+# ESP32 firmware
 
-WiFi stepper control, limit homing, HTTP API, on-device test UI.
+WiFi stepper control, limit homing, HTTP API, and on-device web UI.
 
 **Setup:** [../docs/GETTING_STARTED.md](../docs/GETTING_STARTED.md) · **Wiring:** [../WIRING.md](../WIRING.md) · **API:** [../docs/API.md](../docs/API.md)
 
@@ -14,6 +14,16 @@ WiFi stepper control, limit homing, HTTP API, on-device test UI.
 | 3 | M4 base | 13 | 14 | 6 | Yes |
 
 `POST /home_all`: M2 → M3 → M4.
+
+## Flash
+
+```powershell
+copy include\wifi_secrets.h.example include\wifi_secrets.h
+# edit SSID + password
+pio run -t upload
+```
+
+Open `http://arm.local` to verify.
 
 ## Tuning (`src/main.cpp`)
 
