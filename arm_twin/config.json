@@ -1,9 +1,5 @@
 {
   "esp32_url": "http://arm.local",
-  "servo": {
-    "port": "COM5",
-    "baud": 115200
-  },
   "steps_per_degree": [
     12.222222,
     22.222222,

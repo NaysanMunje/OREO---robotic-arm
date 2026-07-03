@@ -115,10 +115,6 @@
     color: #e8eaed;
     font-size: .9rem;
   }
-  .servo-angle { text-align: center; font-size: 2.6rem; font-weight: 800; color: #7eb8ff; margin: .35rem 0 .25rem; letter-spacing: -1px; }
-  .servo-angle .deg { font-size: 1.2rem; color: #8b93a7; }
-  #servoSlider { width: 100%; accent-color: #1a5a7f; height: 26px; margin-bottom: .4rem; }
-  .servo-grid5 { grid-template-columns: repeat(5, 1fr); }
   .diag-table { width: 100%; border-collapse: collapse; font-size: .72rem; margin: .5rem 0; }
   .diag-table th, .diag-table td { padding: .35rem .4rem; border-bottom: 1px solid #2a3140; text-align: left; }
   .diag-table th { color: #8b93a7; font-weight: 600; }
@@ -336,81 +332,6 @@
     #conn { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #666; margin-right: 6px; }
     #conn.ok { background: #22c55e; }
     #conn.bad { background: #ef4444; }
-    .wrist-url {
-      font-size: .78rem;
-      word-break: break-all;
-      padding: .45rem .55rem;
-      background: #12151c;
-      border-radius: 6px;
-      border: 1px solid #2a3140;
-      color: #7eb8ff;
-      margin: .45rem 0;
-    }
-    .wrist-url a { color: #7eb8ff; }
-    #wristCamPreviewWrap {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 4/3;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid #2a3140;
-      background: #0a0c10;
-    }
-    #wristCamPreview {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      background: #0a0c10;
-    }
-    #wristCamHandOverlay {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-    #wristCamPip {
-      position: fixed;
-      left: .75rem;
-      top: .75rem;
-      width: min(240px, 32vw);
-      z-index: 6;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 2px solid #2a3140;
-      box-shadow: 0 8px 24px rgba(0,0,0,.45);
-      background: #0a0c10;
-    }
-    #wristCamPipWrap {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 4/3;
-      background: #000;
-    }
-    #wristCamPipHandOverlay {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-    #wristCamPip[hidden] { display: none !important; }
-    #wristCamPip img {
-      width: 100%;
-      display: block;
-      aspect-ratio: 4/3;
-      object-fit: cover;
-      background: #000;
-    }
-    #wristCamPip .pip-label {
-      font-size: .68rem;
-      padding: .25rem .45rem;
-      background: rgba(18,20,26,.92);
-      color: #8b93a7;
-      border-top: 1px solid #2a3140;
-    }
-    #wristCamPip .pip-label.live { color: #6ee7a0; }
   </style>
 </head>
 <body>
@@ -419,13 +340,6 @@
       <strong>IK mode</strong> — pick a height, then lock onto a colored dot on that ring.
     </div>
     <div id="ikSnapCursor" hidden aria-hidden="true"></div>
-    <div id="wristCamPip" hidden>
-      <div id="wristCamPipWrap">
-        <img id="wristCamPipImg" alt="Wrist camera">
-        <canvas id="wristCamPipHandOverlay"></canvas>
-      </div>
-      <div class="pip-label" id="wristCamPipLabel">Wrist cam</div>
-    </div>
   </div>
   <aside id="sidebar">
     <h1><span id="conn"></span>Arm Control</h1>
@@ -436,7 +350,6 @@
       <button type="button" class="tab-btn" data-tab="drive">Drive</button>
       <button type="button" class="tab-btn" data-tab="motors">Motors</button>
       <button type="button" class="tab-btn" data-tab="diag">Diag</button>
-      <button type="button" class="tab-btn" data-tab="servo">Servo</button>
     </div>
 
     <div id="tab-twin" class="tab-panel active">
@@ -452,37 +365,6 @@
         </label>
         <div id="twinDriveStatus">Home required before live drive.</div>
       </div>
-      <div class="card">
-        <h2>Wrist camera</h2>
-        <p class="dim-hint" style="margin-top:0"><strong>On your phone</strong> do not use localhost — use the <strong>Phone URL</strong> below (same WiFi as this PC).</p>
-        <div class="wrist-url" id="wristCamUrlPc" style="margin-bottom:.35rem"><span style="color:#8b93a7">PC only:</span> …</div>
-        <div class="wrist-url" id="wristCamUrlPhone"><span style="color:#8b93a7">Phone (wrist cam):</span> …</div>
-        <div id="wristCamPreviewWrap">
-          <img id="wristCamPreview" alt="Waiting for wrist camera">
-          <canvas id="wristCamHandOverlay"></canvas>
-        </div>
-        <label class="live-toggle">
-          <input type="checkbox" id="wristCamPipToggle" checked>
-          Picture-in-picture on 3D view
-        </label>
-        <div class="status" id="wristCamStatus" style="font-size:.78rem;margin-top:.35rem">Phone not connected</div>
-      </div>
-      <div class="card">
-        <h2>Thumb control</h2>
-        <p class="dim-hint" style="margin-top:0">On the phone, enable <strong>Track thumb</strong>. Your thumb's two knuckles drive M2 (shoulder) + M3 (elbow); shoulder uses the angle above horizontal. Motors move only when homed and live drive is on.</p>
-        <label class="live-toggle">
-          <input type="checkbox" id="poseDrive">
-          Drive shoulder + elbow from thumb
-        </label>
-        <label class="live-toggle">
-          <input type="checkbox" id="poseInvertShoulder">
-          Invert shoulder direction
-        </label>
-        <label class="live-toggle">
-          <input type="checkbox" id="poseInvertElbow">
-          Invert elbow direction
-        </label>
-        <div class="status" id="poseStatus" style="font-size:.78rem;margin-top:.35rem">Thumb control off</div>
       </div>
       <div class="card">
         <h2>Inverse kinematics</h2>
@@ -494,17 +376,17 @@
           <span><i class="ik-swatch swatch-plane"></i> Colored dots = click targets</span>
           <span><i class="ik-swatch swatch-reach"></i> Matching line = height ring</span>
           <span><i class="ik-swatch swatch-target"></i> Orange = locked target</span>
-          <span><i class="ik-swatch" style="background:#ff4466"></i> Red line = phone bottom (M1)</span>
+          <span><i class="ik-swatch" style="background:#ff4466"></i> Red line = wrist axis (M1)</span>
         </div>
         <div class="ik-height-row" id="ikHeightRow" hidden></div>
-        <p class="dim-hint" style="margin:.35rem 0 0">8 height rings · 12 base angles each (M4 min→max). Pick phone rotation before confirming.</p>
+        <p class="dim-hint" style="margin:.35rem 0 0">8 height rings · 12 base angles each (M4 min→max). Set wrist rotation before confirming.</p>
         <div class="wrist-zero-row" id="wristZeroRow">
-          <button type="button" class="btn-cal" id="wristZeroBtn">Set wrist 0° (phone position now)</button>
-          <span class="dim-hint" id="wristZeroStatus" style="margin:0">Mount phone · point bottom along red line · set 0°</span>
+          <button type="button" class="btn-cal" id="wristZeroBtn">Set wrist 0°</button>
+          <span class="dim-hint" id="wristZeroStatus" style="margin:0">Align tool along red line · set 0°</span>
         </div>
         <div id="ikWristRow" hidden>
           <label class="joint-head" style="margin-top:.5rem">
-            <strong>Phone rotation</strong> <span>M1 wrist</span>
+            <strong>Wrist rotation</strong> <span>M1 wrist</span>
             <span id="ikWristRotVal">0°</span>
           </label>
           <input type="range" id="ikWristRot" min="-180" max="180" step="1" value="0">
@@ -621,49 +503,6 @@
       </div>
     </div>
 
-    <div id="tab-servo" class="tab-panel">
-      <div class="card">
-        <h2>Servo (USB)</h2>
-        <p class="hint" style="margin-top:0">Hobby servo connected straight to the ESP32 over USB (GPIO 4). Independent of the WiFi arm motors.</p>
-        <div class="step-grid">
-          <label>Serial port
-            <input type="text" id="servoPort" placeholder="COM5" autocomplete="off">
-          </label>
-        </div>
-        <div class="btn-row">
-          <button type="button" class="btn-cal" id="servoConnectBtn">Connect</button>
-          <button type="button" class="btn-stop" id="servoDisconnectBtn" disabled>Disconnect</button>
-        </div>
-        <div class="status" id="servoStatus">Not connected</div>
-
-        <div class="servo-angle"><span id="servoAngleVal">90</span><span class="deg">&deg;</span></div>
-        <input type="range" id="servoSlider" min="0" max="180" value="90" disabled>
-
-        <p class="hint">Presets</p>
-        <div class="btn-row servo-grid5">
-          <button type="button" class="btn-move servo-preset" data-angle="0" disabled>0&deg;</button>
-          <button type="button" class="btn-move servo-preset" data-angle="45" disabled>45&deg;</button>
-          <button type="button" class="btn-move servo-preset" data-angle="90" disabled>90&deg;</button>
-          <button type="button" class="btn-move servo-preset" data-angle="135" disabled>135&deg;</button>
-          <button type="button" class="btn-move servo-preset" data-angle="180" disabled>180&deg;</button>
-        </div>
-
-        <p class="hint">Nudge</p>
-        <div class="btn-row servo-grid5">
-          <button type="button" class="btn-cal servo-nudge" data-delta="-10" disabled>&minus;10</button>
-          <button type="button" class="btn-cal servo-nudge" data-delta="-5" disabled>&minus;5</button>
-          <button type="button" class="btn-home" id="servoCenterBtn" disabled>Center</button>
-          <button type="button" class="btn-cal servo-nudge" data-delta="5" disabled>+5</button>
-          <button type="button" class="btn-cal servo-nudge" data-delta="10" disabled>+10</button>
-        </div>
-
-        <p class="hint">Sweep</p>
-        <div class="btn-row">
-          <button type="button" class="btn-cw" id="servoSweepStart" disabled>Start sweep</button>
-          <button type="button" class="btn-stop" id="servoSweepStop" disabled>Stop sweep</button>
-        </div>
-      </div>
-    </div>
   </aside>
 
   <script type="importmap">
@@ -699,7 +538,6 @@
     let pendingJoints = null;
     let moveTimer = null;
     let moveInFlight = false;
-    let poseDriveActive = false;
     let dragJoint3d = null;
     let pickableJoints = [];
     let ikMode = false;
@@ -832,114 +670,6 @@
 
     function anyMotorHeld() {
       return active.some((d) => d !== null);
-    }
-
-    function setupServoPanel() {
-      const portInput = document.getElementById('servoPort');
-      const connectBtn = document.getElementById('servoConnectBtn');
-      const disconnectBtn = document.getElementById('servoDisconnectBtn');
-      const statusEl = document.getElementById('servoStatus');
-      const angleVal = document.getElementById('servoAngleVal');
-      const slider = document.getElementById('servoSlider');
-      const centerBtn = document.getElementById('servoCenterBtn');
-      const sweepStart = document.getElementById('servoSweepStart');
-      const sweepStop = document.getElementById('servoSweepStop');
-      const presets = [...document.querySelectorAll('.servo-preset')];
-      const nudges = [...document.querySelectorAll('.servo-nudge')];
-      if (!connectBtn) return;
-
-      const ctrls = [slider, centerBtn, sweepStart, sweepStop, ...presets, ...nudges];
-      let connected = false;
-      let sliderTimer = null;
-
-      function setServoStatus(msg, kind = '') {
-        statusEl.textContent = msg;
-        statusEl.classList.remove('err', 'ok');
-        if (kind) statusEl.classList.add(kind);
-      }
-
-      function setAngleDisplay(a) {
-        const v = Math.max(0, Math.min(180, Math.round(a)));
-        angleVal.textContent = v;
-        if (document.activeElement !== slider) slider.value = v;
-      }
-
-      function applyState(st) {
-        connected = !!st.connected;
-        ctrls.forEach((el) => { el.disabled = !connected; });
-        connectBtn.disabled = connected;
-        disconnectBtn.disabled = !connected;
-        if (st.angle != null) setAngleDisplay(st.angle);
-        if (!portInput.value && (st.port || st.default_port)) {
-          portInput.value = st.port || st.default_port;
-        }
-        if (connected) {
-          setServoStatus(`Connected on ${st.port} · ${st.baud} baud${st.sweeping ? ' · sweeping' : ''}`, 'ok');
-        } else if (!st.available) {
-          setServoStatus('pyserial not installed on server', 'err');
-        } else {
-          setServoStatus('Not connected');
-        }
-      }
-
-      async function refresh() {
-        try { applyState(await api('/api/servo/status')); } catch (_) { /* ok */ }
-      }
-
-      connectBtn.addEventListener('click', async () => {
-        setServoStatus('Connecting…');
-        try {
-          const body = JSON.stringify({ port: portInput.value || undefined });
-          applyState(await api('/api/servo/connect', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
-          }));
-        } catch (e) { setServoStatus(e.message, 'err'); }
-      });
-
-      disconnectBtn.addEventListener('click', async () => {
-        try { applyState(await api('/api/servo/disconnect', { method: 'POST' })); }
-        catch (e) { setServoStatus(e.message, 'err'); }
-      });
-
-      async function sendAngle(deg) {
-        try { applyState(await apiPost('/api/servo/angle', { deg })); }
-        catch (e) { setServoStatus(e.message, 'err'); }
-      }
-
-      presets.forEach((b) => b.addEventListener('click', () => {
-        setAngleDisplay(+b.dataset.angle);
-        sendAngle(+b.dataset.angle);
-      }));
-
-      nudges.forEach((b) => b.addEventListener('click', async () => {
-        try { applyState(await apiPost('/api/servo/nudge', { delta: +b.dataset.delta })); }
-        catch (e) { setServoStatus(e.message, 'err'); }
-      }));
-
-      centerBtn.addEventListener('click', async () => {
-        setAngleDisplay(90);
-        try { applyState(await apiPost('/api/servo/center')); }
-        catch (e) { setServoStatus(e.message, 'err'); }
-      });
-
-      slider.addEventListener('input', () => {
-        setAngleDisplay(+slider.value);
-        clearTimeout(sliderTimer);
-        sliderTimer = setTimeout(() => sendAngle(+slider.value), 60);
-      });
-      slider.addEventListener('change', () => sendAngle(+slider.value));
-
-      sweepStart.addEventListener('click', async () => {
-        try { applyState(await apiPost('/api/servo/sweep', { on: true })); }
-        catch (e) { setServoStatus(e.message, 'err'); }
-      });
-      sweepStop.addEventListener('click', async () => {
-        try { applyState(await apiPost('/api/servo/sweep', { on: false })); }
-        catch (e) { setServoStatus(e.message, 'err'); }
-      });
-
-      refresh();
-      setInterval(() => { if (!connected || !sweepStart.disabled) refresh(); }, 2000);
     }
 
     function setupMotorDiag() {
@@ -2093,7 +1823,7 @@
       updateIkPreviewLine(snap.point);
       setIkConfirmUi(true);
       setIkStatus(
-        `Preview [${snap.presetLabel}] — M4 ${snap.joints.M4}° · M2 ${snap.joints.M2}° · M3 ${snap.joints.M3}° · set phone rotation · Confirm.`,
+        `Preview [${snap.presetLabel}] — M4 ${snap.joints.M4}° · M2 ${snap.joints.M2}° · M3 ${snap.joints.M3}° · set wrist rotation · Confirm.`,
       );
     }
 
@@ -2265,17 +1995,17 @@
       const wristPivot = new THREE.Group();
       wristPivot.name = 'joint_m1';
       wristPivot.position.y = fore;
-      const phoneLineLen = Math.max(r * 7, 28);
-      const phoneBottomGeo = new THREE.BufferGeometry().setFromPoints([
+      const wristLineLen = Math.max(r * 7, 28);
+      const wristAxisGeo = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, -phoneLineLen),
+        new THREE.Vector3(0, 0, -wristLineLen),
       ]);
-      const phoneBottomLine = new THREE.Line(
-        phoneBottomGeo,
+      const wristAxisLine = new THREE.Line(
+        wristAxisGeo,
         new THREE.LineBasicMaterial({ color: 0xff4466, transparent: true, opacity: 0.95 }),
       );
-      phoneBottomLine.renderOrder = 5;
-      wristPivot.add(phoneBottomLine);
+      wristAxisLine.renderOrder = 5;
+      wristPivot.add(wristAxisLine);
       wristPivot.add(jointSphere(r * 1.2, 0xc084fc, 'joint_m1'));
       wristPivot.add(jointRing(r * 1.5, 0xe879f9, 'joint_m1'));
       elbowPivot.add(wristPivot);
@@ -2536,7 +2266,7 @@
       return (j.sign ?? 1) === -1;
     }
 
-    /** Slider / UI degrees (0 = limit switch). Wrist uses 0 = user-set phone zero. */
+    /** Slider / UI degrees (0 = limit switch). Wrist uses 0 = user-set wrist zero. */
     function fromMotorDeg(j, motorDeg) {
       if (isWristJoint(j)) {
         const steps = motorDeg * wristStepsPerDeg();
@@ -2610,7 +2340,7 @@
     function syncSlidersFromStatus() {
       if (!config || !statusData) return;
       const userAdjusting = dragJoint3d || Object.values(dragging).some(Boolean);
-      if (userAdjusting || pendingJoints || statusData.moving || ikPending || poseDriveActive) return;
+      if (userAdjusting || pendingJoints || statusData.moving || ikPending) return;
       for (const j of config.joints) {
         const motorDeg = motorDegrees(j.motor);
         const deg = Math.round(fromMotorDeg(j, motorDeg));
@@ -2835,309 +2565,9 @@
       }
     }
 
-    async function setupWristCamViewer() {
-      const urlPc = document.getElementById('wristCamUrlPc');
-      const urlPhone = document.getElementById('wristCamUrlPhone');
-      const statusEl = document.getElementById('wristCamStatus');
-      const preview = document.getElementById('wristCamPreview');
-      const previewWrap = document.getElementById('wristCamPreviewWrap');
-      const handOverlay = document.getElementById('wristCamHandOverlay');
-      const pip = document.getElementById('wristCamPip');
-      const pipImg = document.getElementById('wristCamPipImg');
-      const pipHandOverlay = document.getElementById('wristCamPipHandOverlay');
-      const pipLabel = document.getElementById('wristCamPipLabel');
-      const pipToggle = document.getElementById('wristCamPipToggle');
-      if (!urlPhone || !preview) return;
-
-      const { drawTracksOnCanvas } = await import('/static/hand-track.js');
-      const handOverlayCtx = handOverlay?.getContext('2d');
-      const pipHandOverlayCtx = pipHandOverlay?.getContext('2d');
-      let lastHandState = null;
-      let lastFaceState = null;
-      let lastPoseState = null;
-      let liveMsg = 'Phone not connected';
-
-      const poseDriveInput = document.getElementById('poseDrive');
-      const poseInvertShoulder = document.getElementById('poseInvertShoulder');
-      const poseInvertElbow = document.getElementById('poseInvertElbow');
-      const poseStatusEl = document.getElementById('poseStatus');
-      let poseSmoothShoulder = null;
-      let poseSmoothElbow = null;
-      const POSE_SMOOTH = 0.35;
-
-      function setPoseStatus(msg) {
-        if (poseStatusEl) poseStatusEl.textContent = msg;
-      }
-
-      poseDriveInput?.addEventListener('change', () => {
-        poseDriveActive = poseDriveInput.checked;
-        if (!poseDriveActive) {
-          poseSmoothShoulder = null;
-          poseSmoothElbow = null;
-          setPoseStatus('Thumb control off');
-        } else {
-          setPoseStatus('Thumb control on — hold your thumb up to the phone');
-        }
-      });
-
-      function mapAngleToJoint(j, frac, invert) {
-        const f = Math.max(0, Math.min(1, invert ? 1 - frac : frac));
-        return j.min_deg + f * (j.max_deg - j.min_deg);
-      }
-
-      function drivePoseToArm(pose) {
-        if (!poseDriveActive || !config) return;
-        if (!pose?.detected || pose.shoulder_angle == null || pose.elbow_angle == null) {
-          setPoseStatus('Thumb control on — no thumb detected by phone');
-          return;
-        }
-        const shoulderJoint = config.joints.find((j) => j.role === 'shoulder');
-        const elbowJoint = config.joints.find((j) => j.role === 'elbow');
-        if (!shoulderJoint || !elbowJoint) return;
-
-        // Shoulder = thumb MCP knuckle: elevation above horizontal, -90 (down) .. +90 (up).
-        const shoulderFrac = (pose.shoulder_angle + 90) / 180;
-        // Elbow = thumb IP knuckle: bend angle ~180 (straight) .. ~90 (fully bent).
-        const elbowFrac = (180 - pose.elbow_angle) / 90;
-
-        let shoulderDeg = mapAngleToJoint(shoulderJoint, shoulderFrac, poseInvertShoulder?.checked);
-        let elbowDeg = mapAngleToJoint(elbowJoint, elbowFrac, poseInvertElbow?.checked);
-
-        poseSmoothShoulder = poseSmoothShoulder == null
-          ? shoulderDeg
-          : poseSmoothShoulder + POSE_SMOOTH * (shoulderDeg - poseSmoothShoulder);
-        poseSmoothElbow = poseSmoothElbow == null
-          ? elbowDeg
-          : poseSmoothElbow + POSE_SMOOTH * (elbowDeg - poseSmoothElbow);
-
-        // Snap to 10° steps so small hand tremor doesn't constantly nudge the arm.
-        const sDeg = applyJointDegrees(shoulderJoint, Math.round(poseSmoothShoulder / 10) * 10);
-        const eDeg = applyJointDegrees(elbowJoint, Math.round(poseSmoothElbow / 10) * 10);
-        scheduleLiveMove();
-
-        const driving = canLiveDrive() ? 'driving motors' : 'preview only (home + live drive to move motors)';
-        setPoseStatus(`Arm: ${shoulderJoint.label} ${sDeg}° · ${elbowJoint.label} ${eDeg}° · ${driving}`);
-      }
-
-      function resizeHandOverlays() {
-        if (handOverlay && previewWrap) {
-          handOverlay.width = previewWrap.clientWidth;
-          handOverlay.height = previewWrap.clientHeight;
-        }
-        const pipWrap = document.getElementById('wristCamPipWrap');
-        if (pipHandOverlay && pipWrap) {
-          pipHandOverlay.width = pipWrap.clientWidth;
-          pipHandOverlay.height = pipWrap.clientHeight;
-        }
-      }
-
-      function trackStatusNote() {
-        const parts = [];
-        if (lastHandState?.detected) {
-          parts.push(`${lastHandState.hand_count} hand${lastHandState.hand_count === 1 ? '' : 's'}`);
-        }
-        if (lastFaceState?.detected) parts.push('face');
-        if (lastPoseState?.detected) parts.push('thumb');
-        return parts.length ? ` · ${parts.join(' + ')} tracked` : '';
-      }
-
-      function redrawTrackOverlays() {
-        resizeHandOverlays();
-        const hand = lastHandState || { detected: false, hand_count: 0, hands: [] };
-        const face = lastFaceState || { detected: false, face_count: 0, faces: [] };
-        const pose = lastPoseState || { detected: false, points: null };
-        const anyTrack = hand.detected || face.detected || pose.detected;
-        if (handOverlayCtx && handOverlay) {
-          if (!anyTrack) {
-            handOverlayCtx.clearRect(0, 0, handOverlay.width, handOverlay.height);
-          } else {
-            drawTracksOnCanvas(handOverlayCtx, hand, face, handOverlay.width, handOverlay.height, pose);
-          }
-        }
-        if (pipHandOverlayCtx && pipHandOverlay) {
-          if (!anyTrack) {
-            pipHandOverlayCtx.clearRect(0, 0, pipHandOverlay.width, pipHandOverlay.height);
-          } else {
-            drawTracksOnCanvas(pipHandOverlayCtx, hand, face, pipHandOverlay.width, pipHandOverlay.height, pose);
-          }
-        }
-        if (statusEl) statusEl.textContent = liveMsg + trackStatusNote();
-      }
-
-      function applyHandOverlay(state) {
-        lastHandState = state;
-        redrawTrackOverlays();
-      }
-
-      function applyFaceOverlay(state) {
-        lastFaceState = state;
-        redrawTrackOverlays();
-      }
-
-      function applyPoseOverlay(state) {
-        lastPoseState = state;
-        redrawTrackOverlays();
-        drivePoseToArm(state);
-      }
-
-      async function pollHand() {
-        try {
-          const h = await api('/api/wrist-camera/hand');
-          if (h.age_sec == null || h.age_sec < 2) applyHandOverlay(h);
-          else if (!h.detected) applyHandOverlay({ detected: false, hand_count: 0, hands: [] });
-        } catch (_) { /* ok */ }
-      }
-
-      async function pollFace() {
-        try {
-          const f = await api('/api/wrist-camera/face');
-          if (f.age_sec == null || f.age_sec < 2) applyFaceOverlay(f);
-          else if (!f.detected) applyFaceOverlay({ detected: false, face_count: 0, faces: [] });
-        } catch (_) { /* ok */ }
-      }
-
-      async function pollPose() {
-        try {
-          const p = await api('/api/wrist-camera/pose');
-          if (p.age_sec == null || p.age_sec < 2) applyPoseOverlay(p);
-          else if (!p.detected) applyPoseOverlay({ detected: false, side: null, shoulder_angle: null, elbow_angle: null, points: null });
-        } catch (_) { /* ok */ }
-      }
-
-      if (previewWrap) {
-        new ResizeObserver(resizeHandOverlays).observe(previewWrap);
-      }
-      const pipWrap = document.getElementById('wristCamPipWrap');
-      if (pipWrap) new ResizeObserver(resizeHandOverlays).observe(pipWrap);
-
-      let phoneWristUrl = `${location.protocol}//${location.host}/wrist-camera`;
-      try {
-        const net = await api('/api/network');
-        if (urlPc) {
-          urlPc.innerHTML = `<span style="color:#8b93a7">PC only:</span> <a href="${net.pc_twin}">${net.pc_twin}</a>`;
-        }
-        if (net.phone_wrist_camera) {
-          phoneWristUrl = net.phone_wrist_camera;
-          urlPhone.innerHTML = `<span style="color:#8b93a7">Phone (wrist cam):</span> <a href="${phoneWristUrl}">${phoneWristUrl}</a>`;
-          if (net.iphone_note && net.https) {
-            urlPhone.innerHTML += `<div class="dim-hint" style="margin-top:.35rem;color:#fbbf24">${net.iphone_note}</div>`;
-          }
-        } else {
-          urlPhone.innerHTML = '<span style="color:#f87171">Could not detect LAN IP — use http://YOUR-PC-IP:8000/wrist-camera</span>';
-        }
-      } catch (_) {
-        if (urlPc) urlPc.innerHTML = `<span style="color:#8b93a7">PC only:</span> <a href="http://localhost:8000">http://localhost:8000</a>`;
-        urlPhone.innerHTML = `<span style="color:#8b93a7">Phone:</span> use http://&lt;PC-IP&gt;:8000/wrist-camera`;
-      }
-
-      let ws = null;
-      let blobUrl = null;
-      let reconnectTimer = null;
-      let pollTimer = null;
-      let statusTimer = null;
-      let lastFrameCount = 0;
-
-      function setWristStatus(msg, live = false) {
-        liveMsg = msg;
-        if (statusEl) statusEl.textContent = msg + trackStatusNote();
-        if (pipLabel) {
-          pipLabel.textContent = live ? 'Wrist cam · live' : 'Wrist cam · waiting';
-          pipLabel.classList.toggle('live', live);
-        }
-      }
-
-      async function showFrameFromUrl(url) {
-        preview.src = url;
-        if (pipImg) pipImg.src = url;
-        if (pipToggle?.checked) pip?.removeAttribute('hidden');
-      }
-
-      function showFrame(blob) {
-        if (blobUrl) URL.revokeObjectURL(blobUrl);
-        blobUrl = URL.createObjectURL(blob);
-        preview.src = blobUrl;
-        if (pipImg) pipImg.src = blobUrl;
-        if (pipToggle?.checked) pip?.removeAttribute('hidden');
-      }
-
-      async function pollStatus() {
-        try {
-          const st = await api('/api/wrist-camera/status');
-          if (st.frame_count > lastFrameCount) {
-            lastFrameCount = st.frame_count;
-            const url = `/api/wrist-camera/frame?t=${Date.now()}`;
-            await showFrameFromUrl(url);
-            setWristStatus(`Live · ${st.frame_count} frames from phone`, true);
-          } else if (st.has_frame && st.seconds_since_frame != null && st.seconds_since_frame < 3) {
-            const url = `/api/wrist-camera/frame?t=${Date.now()}`;
-            await showFrameFromUrl(url);
-            setWristStatus(`Live · ${st.frame_count} frames`, true);
-          } else if (st.publisher_connected) {
-            setWristStatus('Phone connected — waiting for frames (check camera permission on phone)');
-          } else if (st.frame_count > 0) {
-            setWristStatus(`Last frame ${st.seconds_since_frame ?? '?'}s ago — reopen wrist camera on phone`);
-          } else {
-            setWristStatus('Waiting for phone — open wrist-camera link and tap Start');
-          }
-        } catch (_) {
-          setWristStatus('Cannot reach wrist camera API — is main.py running?');
-        }
-      }
-
-      function connect() {
-        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${proto}//${location.host}/ws/wrist-camera`);
-        ws.binaryType = 'arraybuffer';
-        ws.onopen = () => ws.send(JSON.stringify({ role: 'view' }));
-        ws.onmessage = async (ev) => {
-          if (ev.data instanceof ArrayBuffer) {
-            showFrame(new Blob([ev.data], { type: 'image/jpeg' }));
-            setWristStatus('Live from wrist camera (WebSocket)', true);
-          } else if (ev.data instanceof Blob) {
-            showFrame(ev.data);
-            setWristStatus('Live from wrist camera (WebSocket)', true);
-          } else if (typeof ev.data === 'string') {
-            try {
-              const msg = JSON.parse(ev.data);
-              if (msg.type === 'ready' && msg.has_frame) setWristStatus('Connected — receiving frames', true);
-              else if (msg.type === 'ready') setWristStatus('Connected — waiting for phone to start camera');
-              else if (msg.type === 'hand') applyHandOverlay(msg);
-              else if (msg.type === 'face') applyFaceOverlay(msg);
-              else if (msg.type === 'pose') applyPoseOverlay(msg);
-            } catch (_) { /* ok */ }
-          }
-        };
-        ws.onclose = () => {
-          reconnectTimer = setTimeout(connect, 3000);
-        };
-        ws.onerror = () => { /* poll fallback handles display */ };
-      }
-
-      pipToggle?.addEventListener('change', () => {
-        if (!pipToggle.checked) pip?.setAttribute('hidden', '');
-        else if (preview.src) pip?.removeAttribute('hidden');
-      });
-
-      preview.addEventListener('error', () => {
-        preview.alt = 'No frame yet';
-      });
-
-      connect();
-      pollStatus();
-      pollHand();
-      pollFace();
-      pollPose();
-      statusTimer = setInterval(pollStatus, 2000);
-      pollTimer = setInterval(pollStatus, 400);
-      setInterval(pollHand, 250);
-      setInterval(pollFace, 250);
-      setInterval(pollPose, 150);
-    }
-
     async function init() {
       setModelInfo('Loading config…');
       setupTabs();
-      setupServoPanel();
       setupMotorDiag();
       setupWristZeroUi();
       setupIkWristRot();
@@ -3163,7 +2593,6 @@
       document.getElementById('ikCancelBtn')?.addEventListener('click', cancelIkPreview);
       buildSliders();
       setup3dJointDrag();
-      setupWristCamViewer();
       await loadMotorSettings();
       resize();
       animate();

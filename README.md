@@ -1,40 +1,43 @@
-# 4-DOF Robotic Arm
+# OREO — Robotic Arm (lite)
 
-ESP32-S3 stepper firmware + PC digital twin (3D model, IK, wrist camera, thumb tracking).
+4-DOF ESP32 stepper arm + PC **digital twin** (3D model, inverse kinematics, live drive).
 
 ```
 ┌─────────────┐     WiFi / HTTP      ┌──────────────────┐
 │  ESP32-S3   │◄────────────────────►│  PC (arm_twin)   │
 │  4× DM542   │   arm.local          │  FastAPI + UI    │
-└─────────────┘                      └────────┬─────────┘
-                                              │
-                                     Phone (wrist cam)
+└─────────────┘                      └──────────────────┘
 ```
 
-## Documentation
+This is the **lite** branch — no phone camera, hand tracking, or USB servo test code.
 
-| Read this | When |
-|-----------|------|
-| **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** | First-time setup |
-| **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** | Daily use — tabs, IK, camera, diag |
-| **[WIRING.md](WIRING.md)** | GPIO, drivers, limits, power |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |
-| [docs/API.md](docs/API.md) | HTTP / WebSocket reference |
+| Doc | Contents |
+|-----|----------|
+| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | Wire → flash → run twin |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Twin tabs, IK, troubleshooting |
+| [WIRING.md](WIRING.md) | GPIO map |
 
-Full index: [docs/README.md](docs/README.md)
+## Quick start
 
-## Repository
+```powershell
+cd esp32_dm542_stepper_test
+pio run -t upload
 
-| Path | Role |
-|------|------|
-| `arm_twin/` | Digital twin server + UI |
-| `esp32_dm542_stepper_test/` | Production stepper firmware |
-| `esp32_limit_switch_test/` | Limit switch bench test |
-| `esp32_servo_test/` | Optional USB servo (separate from arm) |
-| `fusion360/` | CAD gear add-in |
+cd ..\arm_twin
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python main.py
+```
 
-## Requirements
+Open **http://localhost:8000** → **Home all** → **Live drive**.
 
-Python 3.11+, PlatformIO, ESP32-S3-DevKitC-1, 4× stepper drivers, 24 V PSU, PC on same WiFi as ESP32 and phone.
+## What's included
 
-MIT — see [LICENSE](LICENSE).
+- `arm_twin/` — 3D twin UI (Twin, Drive, Motors, Diag tabs)
+- `esp32_dm542_stepper_test/` — WiFi stepper firmware
+- `docs/`, `WIRING.md`
+
+## Full version
+
+The `main` branch includes wrist camera, thumb tracking, and servo test — kept for local development.
