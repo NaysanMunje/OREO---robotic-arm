@@ -32,10 +32,6 @@ API_VERSION = "0.2.0-lite"
 app = FastAPI(title="Arm Digital Twin", version=API_VERSION)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
-models_dir = ROOT / "models"
-if models_dir.is_dir():
-    app.mount("/models", StaticFiles(directory=models_dir), name="models")
-
 
 class MoveRequest(BaseModel):
     m0: int | None = None
@@ -136,7 +132,6 @@ async def save_stick_model(body: StickModelRequest) -> dict[str, Any]:
             if "max_deg" in patch:
                 joint["max_deg"] = float(patch["max_deg"])
                 joint["home_deg"] = float(patch["max_deg"]) / 2.0
-    cfg["model"] = "procedural"
     with CONFIG_PATH.open("w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
         f.write("\n")

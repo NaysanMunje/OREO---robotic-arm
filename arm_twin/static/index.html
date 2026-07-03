@@ -428,10 +428,6 @@
       <div class="card">
         <h2>3D model</h2>
         <div class="status" id="modelInfo">Loading…</div>
-        <details id="nodeDetails" style="margin-top:.5rem;display:none">
-          <summary style="cursor:pointer;font-size:.8rem;color:#8b93a7">FBX node names (for mapping)</summary>
-          <pre id="nodeList" style="font-size:.7rem;max-height:8rem;overflow:auto;color:#9ab;margin:.35rem 0 0"></pre>
-        </details>
       </div>
       <div class="card">
         <h2>Joint angles</h2>
@@ -516,8 +512,6 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
     const RAD = Math.PI / 180;
     const MOTORS = [
@@ -1049,26 +1043,11 @@
       if (anyMotorHeld()) stopAllMotors();
     });
 
-    function listSceneNames(root) {
-      const names = [];
-      root.traverse((o) => { if (o.name) names.push(o.name); });
-      return names;
-    }
-
     function frameModel(object) {
       const box = new THREE.Box3().setFromObject(object);
       if (box.isEmpty()) return;
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z, 1);
-      // Fusion FBX is often in cm — if huge, auto-shrink
-      if (maxDim > 500 && !config._scaleTuned) {
-        const auto = 1 / (maxDim / 200);
-        object.scale.multiplyScalar(auto);
-        box.setFromObject(object);
-        box.getCenter(center);
-        box.getSize(size);
-      }
       const dim = Math.max(size.x, size.y, size.z, 1);
       const dist = dim * 2.2;
       camera.position.set(center.x + dist, center.y + dim * 0.8, center.z + dist);
@@ -2149,115 +2128,6 @@
       }
     }
 
-    function findNodeForJoint(root, jointCfg) {
-      const candidates = [jointCfg.node, ...(jointCfg.node_candidates || [])].filter(Boolean);
-      for (const name of candidates) {
-        let found = null;
-        root.traverse((o) => {
-          if (found || !o.name) return;
-          if (o.name === name || o.name.toLowerCase() === name.toLowerCase()) found = o;
-        });
-        if (found) return found;
-      }
-      for (const name of candidates) {
-        const low = name.toLowerCase();
-        let found = null;
-        root.traverse((o) => {
-          if (found || !o.name) return;
-          if (o.name.toLowerCase().includes(low)) found = o;
-        });
-        if (found) return found;
-      }
-      return null;
-    }
-
-    function modelUrl(file) {
-      return '/' + file.split('/').map(encodeURIComponent).join('/');
-    }
-
-    function applyModelTransform(root) {
-      if (config.model_rotation_deg) {
-        const r = config.model_rotation_deg;
-        root.rotation.set(
-          (r[0] || 0) * RAD,
-          (r[1] || 0) * RAD,
-          (r[2] || 0) * RAD
-        );
-      }
-      const s = config.model_scale ?? 1;
-      if (s !== 1) root.scale.setScalar(s);
-    }
-
-    function bindJoints(root, formatLabel) {
-      const missing = [];
-      const matched = [];
-      for (const j of config.joints) {
-        const node = findNodeForJoint(root, j);
-        if (node) {
-          jointNodes[j.node] = node;
-          matched.push(`${j.label}→${node.name}`);
-        } else {
-          missing.push(j.node);
-        }
-      }
-      frameModel(root);
-      const names = listSceneNames(root);
-      const nodeDetails = document.getElementById('nodeDetails');
-      const nodeList = document.getElementById('nodeList');
-      if (nodeDetails && nodeList && names.length) {
-        nodeDetails.style.display = 'block';
-        nodeList.textContent = names.join('\n');
-      }
-      console.log(`${formatLabel} node names:`, names);
-      if (matched.length) console.log('Joint mapping:', matched);
-      const found = config.joints.length - missing.length;
-      if (missing.length) {
-        setModelInfo(
-          `${formatLabel} · ${found}/${config.joints.length} joints matched. Missing: ${missing.join(', ')}. Pick names from list below → edit config.json "node".`,
-          true
-        );
-      } else {
-        setModelInfo(`${formatLabel} · all joints matched (${matched.join(', ')})`);
-      }
-    }
-
-    async function loadGlb(url) {
-      const gltf = await new GLTFLoader().loadAsync(url);
-      armRoot.clear();
-      jointNodes = {};
-      armRoot.add(gltf.scene);
-      applyModelTransform(gltf.scene);
-      bindJoints(gltf.scene, 'GLB');
-    }
-
-    async function loadFbx(url) {
-      setModelInfo('Parsing FBX…');
-      const root = await new FBXLoader().loadAsync(url);
-      armRoot.clear();
-      jointNodes = {};
-      root.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-          if (child.material) {
-            const mats = Array.isArray(child.material) ? child.material : [child.material];
-            mats.forEach((m) => { if (m) m.side = THREE.DoubleSide; });
-          }
-        }
-      });
-      armRoot.add(root);
-      applyModelTransform(root);
-      bindJoints(root, 'FBX');
-    }
-
-    async function loadCadModel() {
-      const kind = config.model;
-      const file = (config.model_file || config.glb_file || `models/arm.${kind}`).replace(/^\/+/, '');
-      const url = modelUrl(file);
-      if (kind === 'fbx') await loadFbx(url);
-      else await loadGlb(url);
-    }
-
     function jointVerticalDeg(j) {
       return (j.min_deg + j.max_deg) / 2;
     }
@@ -2545,13 +2415,6 @@
       renderer.render(scene, camera);
     }
 
-    async function loadCadModelWithTimeout(ms = 60000) {
-      return Promise.race([
-        loadCadModel(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Model load timeout')), ms)),
-      ]);
-    }
-
     async function checkServerVersion() {
       try {
         const h = await api('/api/health');
@@ -2598,20 +2461,7 @@
       animate();
       pollStatus();
 
-      if (config.model === 'procedural') {
-        buildProceduralArm();
-      } else if (config.model === 'glb' || config.model === 'fbx') {
-        setModelInfo(`Loading ${config.model_file}…`);
-        try {
-          await loadCadModelWithTimeout(60000);
-        } catch (e) {
-          console.warn('Model load failed:', e);
-          buildProceduralArm();
-          setModelInfo(`CAD load failed — using stick model`, true);
-        }
-      } else {
-        buildProceduralArm();
-      }
+      buildProceduralArm();
     }
 
     init();

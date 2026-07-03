@@ -15,7 +15,6 @@
     "M3": 20,
     "M4": 25
   },
-  "model": "procedural",
   "links_mm": {
     "base_plate_diameter": 200.0,
     "base_plate_height": 27.0,
