@@ -1,6 +1,6 @@
 # OREO — 4-DOF Robotic Arm
 
-A DIY WiFi-controlled robotic arm with a browser-based digital twin for planning and driving moves in real time.
+OREO is a 4 DOF robotic arm controlled with an esp32. The joints use 3D printed cycloidal gear reductions and stepper motors. 
 
 <!-- Add your photos below (drop files in docs/, then uncomment):
 
