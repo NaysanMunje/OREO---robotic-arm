@@ -27,7 +27,7 @@ def esp32_url() -> str:
     return os.environ.get("ESP32_URL", load_config().get("esp32_url", "http://192.168.4.1"))
 
 
-API_VERSION = "0.2.0-lite"
+API_VERSION = "0.2.0"
 
 app = FastAPI(title="Arm Digital Twin", version=API_VERSION)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")

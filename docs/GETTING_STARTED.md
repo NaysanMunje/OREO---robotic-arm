@@ -1,6 +1,6 @@
 # Getting started
 
-Setup for the lite twin (no phone camera or servo).
+Follow these three steps to go from parts on a bench to a homed, driveable arm.
 
 ## 1. Wire
 

@@ -1,4 +1,6 @@
-# API reference (lite)
+# API reference
+
+Two HTTP surfaces: the firmware on the ESP32, and the twin server on your PC (which mostly proxies the ESP32 with a bit of extra logic).
 
 ## ESP32 (`http://arm.local`)
 

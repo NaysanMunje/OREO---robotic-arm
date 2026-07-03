@@ -11,8 +11,7 @@ venv/
 
 # Arm twin runtime
 arm_twin/server_log.txt
-arm_twin/certs/*.pem
-!arm_twin/certs/.gitkeep
+arm_twin/certs/
 
 # ESP32 secrets (copy from wifi_secrets.h.example)
 esp32_dm542_stepper_test/include/wifi_secrets.h
