@@ -1,0 +1,3191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arm Control · Digital Twin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f1115;
+      color: #e8eaed;
+      overflow: hidden;
+    }
+    #canvas-wrap { position: fixed; inset: 0; }
+    #sidebar {
+      position: fixed;
+      top: 0; right: 0;
+      width: min(420px, 100vw);
+      height: 100vh;
+      overflow-y: auto;
+      background: rgba(18, 20, 26, 0.94);
+      border-left: 1px solid #2a2f3a;
+      padding: 1rem;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    h1 { font-size: 1.1rem; margin: 0 0 .25rem; }
+    .sub { font-size: .8rem; color: #8b93a7; margin: 0 0 1rem; }
+    .card {
+      background: #1a1e28;
+      border: 1px solid #2a3140;
+      border-radius: 10px;
+      padding: .85rem;
+      margin-bottom: .75rem;
+    }
+    .card h2 { font-size: .9rem; margin: 0 0 .6rem; color: #b8c0d4; }
+    .status { font-size: .82rem; color: #7eb8ff; min-height: 2.4rem; line-height: 1.35; }
+    .status.err { color: #f87171; }
+    .status.warn { color: #fbbf24; }
+    button {
+      width: 100%;
+      padding: .7rem;
+      margin-bottom: .45rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+    }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-home { background: #5a2d82; }
+  .btn-move { background: #1a5a7f; }
+  .btn-stop { background: #7f1d1d; }
+  .btn-cw { background: #1a7f4e; }
+  .btn-ccw { background: #b33a3a; }
+  .btn-cal { background: #1a4a7f; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; margin-bottom: .45rem; }
+  .btn-row button { margin-bottom: 0; }
+  .tabs {
+    display: flex;
+    gap: .35rem;
+    margin-bottom: .75rem;
+  }
+  .tabs button {
+    flex: 1;
+    padding: .5rem .35rem;
+    margin: 0;
+    font-size: .78rem;
+    background: #252a36;
+    color: #9aa3b5;
+    border: 1px solid #2a3140;
+  }
+  .tabs button.active { background: #1a5a7f; color: #fff; border-color: #2a6a8f; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .limbox {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    padding: .6rem;
+    margin: 0 0 .6rem;
+    background: #12151c;
+    border-radius: 8px;
+    border: 1px solid #2a3140;
+  }
+  .led {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #333;
+  }
+  .led.open { background: #22c55e; box-shadow: 0 0 10px #22c55e66; }
+  .led.pressed { background: #ef4444; box-shadow: 0 0 12px #ef444466; }
+  .limtxt { font-size: .8rem; font-weight: 700; }
+  .limsub { font-size: .7rem; color: #6b7280; margin-top: .1rem; }
+  .motor-set { margin: .5rem 0; padding-top: .5rem; border-top: 1px solid #2a3140; }
+  .motor-set label {
+    display: flex;
+    justify-content: space-between;
+    font-size: .72rem;
+    color: #8b93a7;
+    margin-bottom: .2rem;
+  }
+  .motor-set .chk { display: flex; align-items: center; gap: .4rem; margin-top: .35rem; font-size: .75rem; color: #9aa3b5; }
+  .step-grid { display: grid; gap: .45rem; margin-bottom: .6rem; }
+  .step-grid label { font-size: .78rem; color: #8b93a7; display: flex; flex-direction: column; gap: .2rem; }
+  .step-grid input {
+    padding: .45rem;
+    border-radius: 6px;
+    border: 1px solid #2a3140;
+    background: #12151c;
+    color: #e8eaed;
+    font-size: .9rem;
+  }
+  .servo-angle { text-align: center; font-size: 2.6rem; font-weight: 800; color: #7eb8ff; margin: .35rem 0 .25rem; letter-spacing: -1px; }
+  .servo-angle .deg { font-size: 1.2rem; color: #8b93a7; }
+  #servoSlider { width: 100%; accent-color: #1a5a7f; height: 26px; margin-bottom: .4rem; }
+  .servo-grid5 { grid-template-columns: repeat(5, 1fr); }
+  .diag-table { width: 100%; border-collapse: collapse; font-size: .72rem; margin: .5rem 0; }
+  .diag-table th, .diag-table td { padding: .35rem .4rem; border-bottom: 1px solid #2a3140; text-align: left; }
+  .diag-table th { color: #8b93a7; font-weight: 600; }
+  .diag-ok { color: #6ee7a0; }
+  .diag-warn { color: #fbbf24; }
+  .diag-err { color: #f87171; }
+  .diag-motor { margin-bottom: .75rem; padding: .65rem; background: #12151c; border: 1px solid #2a3140; border-radius: 8px; }
+  .diag-motor h4 { margin: 0 0 .35rem; font-size: .82rem; }
+  .diag-motor .pins { margin-bottom: .45rem; }
+  .diag-result { font-size: .72rem; color: #9aa3b5; min-height: 1.2rem; margin-top: .35rem; font-family: ui-monospace, monospace; }
+  .diag-hints { font-size: .72rem; color: #8b93a7; line-height: 1.45; margin: 0; padding-left: 1rem; }
+  .diag-hints li { margin: .2rem 0; }
+  .diag-log {
+    font-family: ui-monospace, monospace; font-size: .68rem; line-height: 1.4;
+    color: #9aa3b5; background: #0d1016; border: 1px solid #222a38;
+    border-radius: 8px; padding: .5rem; max-height: 140px; overflow-y: auto; white-space: pre-wrap;
+  }
+  .wrist-zero-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    margin: .5rem 0 0;
+  }
+  .wrist-zero-row .btn-cal { width: auto; padding: .5rem .75rem; margin: 0; font-size: .78rem; }
+  #ikWristRow input[type=range] { width: 100%; accent-color: #f97316; }
+  .motor-panel { margin-bottom: .65rem; }
+  .motor-panel h3 { font-size: .85rem; margin: 0 0 .15rem; }
+  .pins { font-size: .7rem; color: #6b7280; margin: 0 0 .45rem; }
+  .motor-st { font-size: .75rem; color: #7eb8ff; min-height: 1.1rem; margin-top: .35rem; }
+  .dim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .45rem;
+    margin-bottom: .5rem;
+  }
+  .dim-grid label {
+    font-size: .72rem;
+    color: #8b93a7;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+  }
+  .dim-grid label.wide { grid-column: 1 / -1; }
+  .dim-grid input {
+    padding: .4rem;
+    border-radius: 6px;
+    border: 1px solid #2a3140;
+    background: #12151c;
+    color: #e8eaed;
+    font-size: .85rem;
+  }
+  .dim-hint { font-size: .7rem; color: #6b7280; margin: 0 0 .5rem; line-height: 1.35; }
+  .lim-row {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr 1fr;
+    gap: .35rem;
+    align-items: center;
+    margin-bottom: .35rem;
+    font-size: .75rem;
+  }
+  .lim-row strong { color: #b8c0d4; }
+  .lim-row input {
+    padding: .35rem;
+    border-radius: 6px;
+    border: 1px solid #2a3140;
+    background: #12151c;
+    color: #e8eaed;
+    font-size: .82rem;
+    width: 100%;
+  }
+  .btn-save { background: #1a5a7f; margin-top: .25rem; }
+  #stickSaveStatus { font-size: .75rem; color: #7eb8ff; min-height: 1.1rem; margin-top: .35rem; }
+    .joint {
+      margin-bottom: .75rem;
+      padding-bottom: .75rem;
+      border-bottom: 1px solid #2a3140;
+    }
+    .joint:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .joint-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: .82rem;
+      margin-bottom: .35rem;
+    }
+    .joint-head span { color: #8b93a7; }
+    input[type=range] { width: 100%; }
+    .hint { font-size: .75rem; color: #6b7280; margin-top: .75rem; line-height: 1.4; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: .35rem; margin: .5rem 0; }
+    .badge {
+      font-size: .72rem;
+      padding: .2rem .45rem;
+      border-radius: 6px;
+      background: #252a36;
+      color: #8b93a7;
+      border: 1px solid #2a3140;
+    }
+    .badge.ok { background: #14301f; color: #6ee7a0; border-color: #1f4d32; }
+    .live-toggle {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .82rem;
+      color: #b8c0d4;
+      margin: .6rem 0;
+    }
+    .live-toggle input { width: auto; }
+    .btn-ik-confirm { background: #15803d; }
+    .btn-ik-cancel { background: #374151; }
+    .ik-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem .75rem;
+      margin: .5rem 0 0;
+      font-size: .72rem;
+      color: #9aa3b5;
+    }
+    .ik-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+    .ik-swatch {
+      width: .75rem;
+      height: .75rem;
+      border-radius: 3px;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,.15);
+    }
+  .swatch-plane { background: rgba(59,130,246,.45); }
+  .swatch-reach { background: rgba(34,197,94,.35); border-color: #22c55e; }
+  .swatch-noreach { background: rgba(239,68,68,.35); border-color: #ef4444; }
+  .swatch-joint { background: rgba(148,163,184,.5); }
+  .swatch-target { background: #f97316; }
+  #ikConfirmRow { margin-top: .5rem; }
+  #ikConfirmRow button { margin-bottom: 0; }
+  #canvas-wrap canvas.ik-snap-valid { cursor: none; }
+  #canvas-wrap canvas.ik-snap-invalid { cursor: not-allowed; }
+  #ikSnapCursor {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 26px;
+    height: 26px;
+    margin: -13px 0 0 -13px;
+    border: 2px solid #4ade80;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(15, 17, 21, 0.75), 0 0 14px rgba(74, 222, 128, 0.5);
+    pointer-events: none;
+    z-index: 20;
+  }
+  #ikSnapCursor::before,
+  #ikSnapCursor::after {
+    content: '';
+    position: absolute;
+    background: #4ade80;
+  }
+  #ikSnapCursor::before {
+    left: 50%;
+    top: 4px;
+    width: 2px;
+    height: 18px;
+    margin-left: -1px;
+  }
+  #ikSnapCursor::after {
+    top: 50%;
+    left: 4px;
+    height: 2px;
+    width: 18px;
+    margin-top: -1px;
+  }
+  #ikSnapCursor[hidden] { display: none !important; }
+  .ik-height-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin: .5rem 0 0;
+  }
+  .ik-height-btn {
+    flex: 1 1 calc(50% - .35rem);
+    min-width: 7rem;
+    padding: .4rem .5rem;
+    margin: 0;
+    border-radius: 6px;
+    border: 1px solid #2a3140;
+    background: #252a36;
+    color: #b8c0d4;
+    font-size: .72rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+  }
+  .ik-height-btn.active {
+    border-color: #7eb8ff;
+    background: #1a3a5a;
+    color: #e8eaed;
+  }
+  .ik-height-btn[data-preset="all"] { flex: 1 1 100%; text-align: center; }
+  .ik-overlay {
+    position: absolute;
+    left: .75rem;
+    bottom: .75rem;
+    max-width: min(420px, calc(100vw - 460px));
+    padding: .55rem .75rem;
+    border-radius: 8px;
+    background: rgba(15,17,21,.88);
+    border: 1px solid #2a3140;
+    font-size: .78rem;
+    color: #b8c0d4;
+    line-height: 1.4;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .ik-overlay strong { color: #7eb8ff; }
+  .ik-overlay[hidden] { display: none !important; }
+    #twinDriveStatus { font-size: .8rem; color: #7eb8ff; min-height: 1.2rem; margin-top: .35rem; }
+    #twinDriveStatus.err { color: #f87171; }
+    #twinDriveStatus.warn { color: #fbbf24; }
+    #conn { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #666; margin-right: 6px; }
+    #conn.ok { background: #22c55e; }
+    #conn.bad { background: #ef4444; }
+    .wrist-url {
+      font-size: .78rem;
+      word-break: break-all;
+      padding: .45rem .55rem;
+      background: #12151c;
+      border-radius: 6px;
+      border: 1px solid #2a3140;
+      color: #7eb8ff;
+      margin: .45rem 0;
+    }
+    .wrist-url a { color: #7eb8ff; }
+    #wristCamPreviewWrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #2a3140;
+      background: #0a0c10;
+    }
+    #wristCamPreview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #0a0c10;
+    }
+    #wristCamHandOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    #wristCamPip {
+      position: fixed;
+      left: .75rem;
+      top: .75rem;
+      width: min(240px, 32vw);
+      z-index: 6;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid #2a3140;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+      background: #0a0c10;
+    }
+    #wristCamPipWrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #000;
+    }
+    #wristCamPipHandOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    #wristCamPip[hidden] { display: none !important; }
+    #wristCamPip img {
+      width: 100%;
+      display: block;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      background: #000;
+    }
+    #wristCamPip .pip-label {
+      font-size: .68rem;
+      padding: .25rem .45rem;
+      background: rgba(18,20,26,.92);
+      color: #8b93a7;
+      border-top: 1px solid #2a3140;
+    }
+    #wristCamPip .pip-label.live { color: #6ee7a0; }
+  </style>
+</head>
+<body>
+  <div id="canvas-wrap">
+    <div id="ikOverlay" class="ik-overlay" hidden>
+      <strong>IK mode</strong> — pick a height, then lock onto a colored dot on that ring.
+    </div>
+    <div id="ikSnapCursor" hidden aria-hidden="true"></div>
+    <div id="wristCamPip" hidden>
+      <div id="wristCamPipWrap">
+        <img id="wristCamPipImg" alt="Wrist camera">
+        <canvas id="wristCamPipHandOverlay"></canvas>
+      </div>
+      <div class="pip-label" id="wristCamPipLabel">Wrist cam</div>
+    </div>
+  </div>
+  <aside id="sidebar">
+    <h1><span id="conn"></span>Arm Control</h1>
+    <p class="sub">3D twin + full ESP32 motor control</p>
+
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="twin">Twin</button>
+      <button type="button" class="tab-btn" data-tab="drive">Drive</button>
+      <button type="button" class="tab-btn" data-tab="motors">Motors</button>
+      <button type="button" class="tab-btn" data-tab="diag">Diag</button>
+      <button type="button" class="tab-btn" data-tab="servo">Servo</button>
+    </div>
+
+    <div id="tab-twin" class="tab-panel active">
+      <div class="card">
+        <h2>Calibrate &amp; drive</h2>
+        <div class="status" id="twinCalibStatus">Connect to ESP32, then home the arm.</div>
+        <div class="badge-row" id="homedBadges"></div>
+        <button class="btn-home" id="twinHomeBtn">Home all (shoulder→elbow→base)</button>
+        <button class="btn-stop" id="twinStopBtn">Stop all</button>
+        <label class="live-toggle">
+          <input type="checkbox" id="liveDrive" checked>
+          Live drive — model changes move the real arm
+        </label>
+        <div id="twinDriveStatus">Home required before live drive.</div>
+      </div>
+      <div class="card">
+        <h2>Wrist camera</h2>
+        <p class="dim-hint" style="margin-top:0"><strong>On your phone</strong> do not use localhost — use the <strong>Phone URL</strong> below (same WiFi as this PC).</p>
+        <div class="wrist-url" id="wristCamUrlPc" style="margin-bottom:.35rem"><span style="color:#8b93a7">PC only:</span> …</div>
+        <div class="wrist-url" id="wristCamUrlPhone"><span style="color:#8b93a7">Phone (wrist cam):</span> …</div>
+        <div id="wristCamPreviewWrap">
+          <img id="wristCamPreview" alt="Waiting for wrist camera">
+          <canvas id="wristCamHandOverlay"></canvas>
+        </div>
+        <label class="live-toggle">
+          <input type="checkbox" id="wristCamPipToggle" checked>
+          Picture-in-picture on 3D view
+        </label>
+        <div class="status" id="wristCamStatus" style="font-size:.78rem;margin-top:.35rem">Phone not connected</div>
+      </div>
+      <div class="card">
+        <h2>Thumb control</h2>
+        <p class="dim-hint" style="margin-top:0">On the phone, enable <strong>Track thumb</strong>. Your thumb's two knuckles drive M2 (shoulder) + M3 (elbow); shoulder uses the angle above horizontal. Motors move only when homed and live drive is on.</p>
+        <label class="live-toggle">
+          <input type="checkbox" id="poseDrive">
+          Drive shoulder + elbow from thumb
+        </label>
+        <label class="live-toggle">
+          <input type="checkbox" id="poseInvertShoulder">
+          Invert shoulder direction
+        </label>
+        <label class="live-toggle">
+          <input type="checkbox" id="poseInvertElbow">
+          Invert elbow direction
+        </label>
+        <div class="status" id="poseStatus" style="font-size:.78rem;margin-top:.35rem">Thumb control off</div>
+      </div>
+      <div class="card">
+        <h2>Inverse kinematics</h2>
+        <label class="live-toggle">
+          <input type="checkbox" id="ikMode">
+          IK click — pick target in 3D view
+        </label>
+        <div class="ik-legend" id="ikLegend" hidden>
+          <span><i class="ik-swatch swatch-plane"></i> Colored dots = click targets</span>
+          <span><i class="ik-swatch swatch-reach"></i> Matching line = height ring</span>
+          <span><i class="ik-swatch swatch-target"></i> Orange = locked target</span>
+          <span><i class="ik-swatch" style="background:#ff4466"></i> Red line = phone bottom (M1)</span>
+        </div>
+        <div class="ik-height-row" id="ikHeightRow" hidden></div>
+        <p class="dim-hint" style="margin:.35rem 0 0">8 height rings · 12 base angles each (M4 min→max). Pick phone rotation before confirming.</p>
+        <div class="wrist-zero-row" id="wristZeroRow">
+          <button type="button" class="btn-cal" id="wristZeroBtn">Set wrist 0° (phone position now)</button>
+          <span class="dim-hint" id="wristZeroStatus" style="margin:0">Mount phone · point bottom along red line · set 0°</span>
+        </div>
+        <div id="ikWristRow" hidden>
+          <label class="joint-head" style="margin-top:.5rem">
+            <strong>Phone rotation</strong> <span>M1 wrist</span>
+            <span id="ikWristRotVal">0°</span>
+          </label>
+          <input type="range" id="ikWristRot" min="-180" max="180" step="1" value="0">
+        </div>
+        <div class="btn-row" id="ikConfirmRow" hidden>
+          <button type="button" class="btn-ik-cancel" id="ikCancelBtn">Cancel</button>
+          <button type="button" class="btn-ik-confirm" id="ikConfirmBtn" disabled>Move arm here</button>
+        </div>
+        <div class="status" id="ikStatus" style="font-size:.78rem;margin-top:.35rem">IK off — enable to pick targets</div>
+      </div>
+      <div class="card">
+        <h2>Stick model — sizes &amp; limits</h2>
+        <p class="dim-hint">Measure with a tape or ruler (mm). Save rebuilds the 3D lines and slider ranges.</p>
+        <div class="dim-grid" id="stickDimGrid">
+          <label>Base plate Ø <span style="color:#6b7280">mm</span>
+            <input type="number" id="dim_base_diameter" min="1" step="1">
+          </label>
+          <label>Base height <span style="color:#6b7280">plate thickness</span>
+            <input type="number" id="dim_base_plate_height" min="1" step="0.1">
+          </label>
+          <label>To shoulder <span style="color:#6b7280">top of base → shoulder</span>
+            <input type="number" id="dim_shoulder_offset" min="0" step="0.1">
+          </label>
+          <label>Upper arm <span style="color:#6b7280">shoulder → elbow</span>
+            <input type="number" id="dim_upper_arm" min="1" step="0.1">
+          </label>
+          <label>Forearm <span style="color:#6b7280">elbow → wrist (tip)</span>
+            <input type="number" id="dim_forearm" min="0" step="0.1">
+          </label>
+          <label>Gripper <span style="color:#6b7280">wrist → tip</span>
+            <input type="number" id="dim_gripper" min="0" step="0.1">
+          </label>
+        </div>
+        <p class="dim-hint" style="margin-top:0">Total travel per joint (limit → opposite limit). <strong>0° = limit switch</strong> · vertical ≈ max÷2.</p>
+        <div id="stickLimitRows"></div>
+        <button type="button" class="btn-save" id="stickSaveBtn">Save &amp; rebuild model</button>
+        <div id="stickSaveStatus"></div>
+      </div>
+      <div class="card">
+        <h2>3D model</h2>
+        <div class="status" id="modelInfo">Loading…</div>
+        <details id="nodeDetails" style="margin-top:.5rem;display:none">
+          <summary style="cursor:pointer;font-size:.8rem;color:#8b93a7">FBX node names (for mapping)</summary>
+          <pre id="nodeList" style="font-size:.7rem;max-height:8rem;overflow:auto;color:#9ab;margin:.35rem 0 0"></pre>
+        </details>
+      </div>
+      <div class="card">
+        <h2>Joint angles</h2>
+        <div id="jointSliders"></div>
+        <p class="hint">Drag sliders or click-drag joint spheres in the 3D view. Real arm follows when live drive is on and homed.</p>
+      </div>
+    </div>
+
+    <div id="tab-drive" class="tab-panel">
+      <div class="card">
+        <h2>Connection</h2>
+        <div class="status" id="statusLine">Connecting…</div>
+        <button class="btn-home" id="homeBtn">Home all (shoulder→elbow→base)</button>
+        <button class="btn-stop" id="stopAllBtn">Stop all motors</button>
+      </div>
+      <div class="card">
+        <h2>Move by steps</h2>
+        <p class="hint" style="margin-top:0">Absolute step targets. Leave blank to skip a motor. M2–M4 must be homed.</p>
+        <div class="step-grid" id="stepInputs"></div>
+        <button class="btn-move" id="moveStepsBtn">Move to step targets</button>
+        <div class="status" id="moveStepsStatus" style="margin-top:.5rem;font-size:.78rem">Move: idle</div>
+      </div>
+    </div>
+
+    <div id="tab-motors" class="tab-panel">
+      <div class="card">
+        <h2>Manual control</h2>
+        <p class="hint" style="margin-top:0">Hold CW/CCW to jog. Release or tap Stop all to halt.</p>
+        <div id="motorPanels"></div>
+      </div>
+    </div>
+
+    <div id="tab-diag" class="tab-panel">
+      <div class="card">
+        <h2>Motor diagnostics</h2>
+        <p class="dim-hint" style="margin-top:0">Isolate one motor at a time. Jog tests spin a single motor for ~1.5s and report step count change. If steps change but the shaft doesn't move → driver/power/wiring. If steps stay at 0 → GPIO or firmware issue.</p>
+        <div class="status" id="diagConnStatus">Checking ESP32…</div>
+        <button type="button" class="btn-stop" id="diagStopAllBtn">Stop all motors</button>
+        <button type="button" class="btn-cal" id="diagRefreshBtn">Refresh status</button>
+        <button type="button" class="btn-home" id="diagTestAllBtn">Run jog test on all motors</button>
+      </div>
+      <div class="card">
+        <h2>Live status</h2>
+        <table class="diag-table" id="diagTable">
+          <thead>
+            <tr>
+              <th>Motor</th><th>GPIO</th><th>Homed</th><th>Steps</th><th>Limit</th><th>Jogging</th>
+            </tr>
+          </thead>
+          <tbody id="diagTableBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Per-motor tests</h2>
+        <div id="diagMotorTests"></div>
+      </div>
+      <div class="card">
+        <h2>Common issues</h2>
+        <ul class="diag-hints">
+          <li><strong>Only one motor moves</strong> — check 24V to each driver, PUL+/DIR+ on correct GPIO, and PUL−/DIR− to ESP GND.</li>
+          <li><strong>Limit always pressed</strong> — switch may be shorted to GND or wired wrong; homing will fail for that joint.</li>
+          <li><strong>Steps change, shaft still</strong> — driver enable (ENA), motor phases, or 24V to that driver only.</li>
+          <li><strong>Jog blocked</strong> — homing or move in progress; tap Stop all first.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>Test log</h2>
+        <div class="diag-log" id="diagLog"></div>
+      </div>
+    </div>
+
+    <div id="tab-servo" class="tab-panel">
+      <div class="card">
+        <h2>Servo (USB)</h2>
+        <p class="hint" style="margin-top:0">Hobby servo connected straight to the ESP32 over USB (GPIO 4). Independent of the WiFi arm motors.</p>
+        <div class="step-grid">
+          <label>Serial port
+            <input type="text" id="servoPort" placeholder="COM5" autocomplete="off">
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-cal" id="servoConnectBtn">Connect</button>
+          <button type="button" class="btn-stop" id="servoDisconnectBtn" disabled>Disconnect</button>
+        </div>
+        <div class="status" id="servoStatus">Not connected</div>
+
+        <div class="servo-angle"><span id="servoAngleVal">90</span><span class="deg">&deg;</span></div>
+        <input type="range" id="servoSlider" min="0" max="180" value="90" disabled>
+
+        <p class="hint">Presets</p>
+        <div class="btn-row servo-grid5">
+          <button type="button" class="btn-move servo-preset" data-angle="0" disabled>0&deg;</button>
+          <button type="button" class="btn-move servo-preset" data-angle="45" disabled>45&deg;</button>
+          <button type="button" class="btn-move servo-preset" data-angle="90" disabled>90&deg;</button>
+          <button type="button" class="btn-move servo-preset" data-angle="135" disabled>135&deg;</button>
+          <button type="button" class="btn-move servo-preset" data-angle="180" disabled>180&deg;</button>
+        </div>
+
+        <p class="hint">Nudge</p>
+        <div class="btn-row servo-grid5">
+          <button type="button" class="btn-cal servo-nudge" data-delta="-10" disabled>&minus;10</button>
+          <button type="button" class="btn-cal servo-nudge" data-delta="-5" disabled>&minus;5</button>
+          <button type="button" class="btn-home" id="servoCenterBtn" disabled>Center</button>
+          <button type="button" class="btn-cal servo-nudge" data-delta="5" disabled>+5</button>
+          <button type="button" class="btn-cal servo-nudge" data-delta="10" disabled>+10</button>
+        </div>
+
+        <p class="hint">Sweep</p>
+        <div class="btn-row">
+          <button type="button" class="btn-cw" id="servoSweepStart" disabled>Start sweep</button>
+          <button type="button" class="btn-stop" id="servoSweepStop" disabled>Stop sweep</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/static/vendor/three/build/three.module.js",
+      "three/addons/": "/static/vendor/three/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+
+    const RAD = Math.PI / 180;
+    const MOTORS = [
+      { id: 0, label: 'M1', role: 'wrist', pins: 'PUL=4 · DIR=5 · no limit' },
+      { id: 1, label: 'M2', role: 'shoulder', pins: 'PUL=9 · DIR=10 · limit GPIO7', limitGpio: 7 },
+      { id: 2, label: 'M3', role: 'elbow', pins: 'PUL=11 · DIR=12 · limit GPIO15', limitGpio: 15 },
+      { id: 3, label: 'M4', role: 'base', pins: 'PUL=13 · DIR=14 · limit GPIO6', limitGpio: 6 },
+    ];
+    let config = null;
+    let jointNodes = {};
+    let sliderState = {};
+    let dragging = {};
+    let statusData = null;
+    let active = [null, null, null, null];
+    let runToken = [0, 0, 0, 0];
+    let saveTimers = {};
+    let liveDrive = true;
+    let pendingJoints = null;
+    let moveTimer = null;
+    let moveInFlight = false;
+    let poseDriveActive = false;
+    let dragJoint3d = null;
+    let pickableJoints = [];
+    let ikMode = false;
+    let armTip = null;
+    let ikTargetMarker = null;
+    let ikHoverMarker = null;
+    let ikRingGroup = null;
+    let ikSnapMarkerGroup = null;
+    let ikSnapMarkerMeshes = [];
+    let ikPreviewLine = null;
+    let ikPending = null;
+    let ikSnapState = null;
+    let ikActiveSnapId = -1;
+    let ikActivePresetFilter = 'all';
+    const ikSnapPoints = [];
+    const ikHeightPresets = [];
+    const IK_SNAP_COUNT = 12;
+    const IK_PRESET_COUNT = 8;
+    const IK_PRESET_LABELS = ['Ground', 'Low', 'Low-mid', 'Mid', 'Mid-high', 'High', 'Reach-up', 'Top'];
+    const IK_PRESET_COLORS = [
+      0x3b82f6, 0x60a5fa, 0x22d3ee, 0x4ade80,
+      0xfbbf24, 0xf97316, 0xfb7185, 0xa78bfa,
+    ];
+    const IK_SNAP_PX = 52;
+    const ikShoulderPos = new THREE.Vector3();
+    const ikProjected = new THREE.Vector3();
+    const raycaster = new THREE.Raycaster();
+    const pointerNdc = new THREE.Vector2();
+
+    const WRIST_ZERO_KEY = 'arm_wrist_zero_steps';
+
+    function wristStepsPerDeg() {
+      const per90 = config?.wrist?.steps_per_90 ?? 1100;
+      return per90 / 90;
+    }
+
+    function getWristZeroSteps() {
+      const raw = localStorage.getItem(WRIST_ZERO_KEY);
+      if (raw == null || raw === '') return 0;
+      const n = parseInt(raw, 10);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function setWristZeroFromCurrent() {
+      const m = statusData?.motors?.find((x) => x.id === 0);
+      if (!m) {
+        updateWristZeroStatus('Connect to arm first', 'warn');
+        return;
+      }
+      localStorage.setItem(WRIST_ZERO_KEY, String(m.steps ?? 0));
+      updateWristZeroStatus(`0° set at ${m.steps ?? 0} steps`, 'ok');
+      const j1 = jointByLabel('M1');
+      if (j1) applyJointDegrees(j1, 0);
+    }
+
+    function updateWristZeroStatus(msg, kind = '') {
+      const el = document.getElementById('wristZeroStatus');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('diag-ok', 'diag-warn', 'diag-err');
+      if (kind === 'ok') el.classList.add('diag-ok');
+      if (kind === 'warn') el.classList.add('diag-warn');
+      if (kind === 'err') el.classList.add('diag-err');
+    }
+
+    function wristRelDegFromMotorSteps(steps) {
+      return (steps - getWristZeroSteps()) / wristStepsPerDeg();
+    }
+
+    function wristMotorDegFromRel(relDeg) {
+      const steps = getWristZeroSteps() + relDeg * wristStepsPerDeg();
+      return steps / wristStepsPerDeg();
+    }
+
+    function isWristJoint(j) {
+      return j?.role === 'wrist' || j?.label === 'M1';
+    }
+
+    function setupWristZeroUi() {
+      document.getElementById('wristZeroBtn')?.addEventListener('click', setWristZeroFromCurrent);
+      updateWristZeroStatus(`0° reference: ${getWristZeroSteps()} steps`);
+    }
+
+    function setupIkWristRot() {
+      const slider = document.getElementById('ikWristRot');
+      const valEl = document.getElementById('ikWristRotVal');
+      if (!slider) return;
+      slider.addEventListener('input', () => {
+        const deg = +slider.value;
+        if (valEl) valEl.textContent = `${deg}°`;
+        const j1 = jointByLabel('M1');
+        if (j1 && ikPending) applyJointDegrees(j1, deg);
+      });
+    }
+
+    function readIkWristRot() {
+      return +document.getElementById('ikWristRot')?.value || 0;
+    }
+
+    function setIkWristRot(deg) {
+      const slider = document.getElementById('ikWristRot');
+      const valEl = document.getElementById('ikWristRotVal');
+      const v = Math.max(-180, Math.min(180, Math.round(deg)));
+      if (slider) slider.value = v;
+      if (valEl) valEl.textContent = `${v}°`;
+    }
+
+    const statusLine = document.getElementById('statusLine');
+    const connDot = document.getElementById('conn');
+    const jointSliders = document.getElementById('jointSliders');
+    const homeBtn = document.getElementById('homeBtn');
+    const stopAllBtn = document.getElementById('stopAllBtn');
+    const moveStepsBtn = document.getElementById('moveStepsBtn');
+    const moveStepsStatus = document.getElementById('moveStepsStatus');
+    const motorPanels = document.getElementById('motorPanels');
+    const stepInputs = document.getElementById('stepInputs');
+    const modelInfo = document.getElementById('modelInfo');
+    const twinHomeBtn = document.getElementById('twinHomeBtn');
+    const twinStopBtn = document.getElementById('twinStopBtn');
+    const twinCalibStatus = document.getElementById('twinCalibStatus');
+    const twinDriveStatus = document.getElementById('twinDriveStatus');
+    const homedBadges = document.getElementById('homedBadges');
+    const liveDriveInput = document.getElementById('liveDrive');
+
+    function setModelInfo(msg, isErr = false) {
+      if (!modelInfo) return;
+      modelInfo.textContent = msg;
+      modelInfo.classList.toggle('err', isErr);
+    }
+
+    function anyMotorHeld() {
+      return active.some((d) => d !== null);
+    }
+
+    function setupServoPanel() {
+      const portInput = document.getElementById('servoPort');
+      const connectBtn = document.getElementById('servoConnectBtn');
+      const disconnectBtn = document.getElementById('servoDisconnectBtn');
+      const statusEl = document.getElementById('servoStatus');
+      const angleVal = document.getElementById('servoAngleVal');
+      const slider = document.getElementById('servoSlider');
+      const centerBtn = document.getElementById('servoCenterBtn');
+      const sweepStart = document.getElementById('servoSweepStart');
+      const sweepStop = document.getElementById('servoSweepStop');
+      const presets = [...document.querySelectorAll('.servo-preset')];
+      const nudges = [...document.querySelectorAll('.servo-nudge')];
+      if (!connectBtn) return;
+
+      const ctrls = [slider, centerBtn, sweepStart, sweepStop, ...presets, ...nudges];
+      let connected = false;
+      let sliderTimer = null;
+
+      function setServoStatus(msg, kind = '') {
+        statusEl.textContent = msg;
+        statusEl.classList.remove('err', 'ok');
+        if (kind) statusEl.classList.add(kind);
+      }
+
+      function setAngleDisplay(a) {
+        const v = Math.max(0, Math.min(180, Math.round(a)));
+        angleVal.textContent = v;
+        if (document.activeElement !== slider) slider.value = v;
+      }
+
+      function applyState(st) {
+        connected = !!st.connected;
+        ctrls.forEach((el) => { el.disabled = !connected; });
+        connectBtn.disabled = connected;
+        disconnectBtn.disabled = !connected;
+        if (st.angle != null) setAngleDisplay(st.angle);
+        if (!portInput.value && (st.port || st.default_port)) {
+          portInput.value = st.port || st.default_port;
+        }
+        if (connected) {
+          setServoStatus(`Connected on ${st.port} · ${st.baud} baud${st.sweeping ? ' · sweeping' : ''}`, 'ok');
+        } else if (!st.available) {
+          setServoStatus('pyserial not installed on server', 'err');
+        } else {
+          setServoStatus('Not connected');
+        }
+      }
+
+      async function refresh() {
+        try { applyState(await api('/api/servo/status')); } catch (_) { /* ok */ }
+      }
+
+      connectBtn.addEventListener('click', async () => {
+        setServoStatus('Connecting…');
+        try {
+          const body = JSON.stringify({ port: portInput.value || undefined });
+          applyState(await api('/api/servo/connect', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+          }));
+        } catch (e) { setServoStatus(e.message, 'err'); }
+      });
+
+      disconnectBtn.addEventListener('click', async () => {
+        try { applyState(await api('/api/servo/disconnect', { method: 'POST' })); }
+        catch (e) { setServoStatus(e.message, 'err'); }
+      });
+
+      async function sendAngle(deg) {
+        try { applyState(await apiPost('/api/servo/angle', { deg })); }
+        catch (e) { setServoStatus(e.message, 'err'); }
+      }
+
+      presets.forEach((b) => b.addEventListener('click', () => {
+        setAngleDisplay(+b.dataset.angle);
+        sendAngle(+b.dataset.angle);
+      }));
+
+      nudges.forEach((b) => b.addEventListener('click', async () => {
+        try { applyState(await apiPost('/api/servo/nudge', { delta: +b.dataset.delta })); }
+        catch (e) { setServoStatus(e.message, 'err'); }
+      }));
+
+      centerBtn.addEventListener('click', async () => {
+        setAngleDisplay(90);
+        try { applyState(await apiPost('/api/servo/center')); }
+        catch (e) { setServoStatus(e.message, 'err'); }
+      });
+
+      slider.addEventListener('input', () => {
+        setAngleDisplay(+slider.value);
+        clearTimeout(sliderTimer);
+        sliderTimer = setTimeout(() => sendAngle(+slider.value), 60);
+      });
+      slider.addEventListener('change', () => sendAngle(+slider.value));
+
+      sweepStart.addEventListener('click', async () => {
+        try { applyState(await apiPost('/api/servo/sweep', { on: true })); }
+        catch (e) { setServoStatus(e.message, 'err'); }
+      });
+      sweepStop.addEventListener('click', async () => {
+        try { applyState(await apiPost('/api/servo/sweep', { on: false })); }
+        catch (e) { setServoStatus(e.message, 'err'); }
+      });
+
+      refresh();
+      setInterval(() => { if (!connected || !sweepStart.disabled) refresh(); }, 2000);
+    }
+
+    function setupMotorDiag() {
+      const connEl = document.getElementById('diagConnStatus');
+      const tableBody = document.getElementById('diagTableBody');
+      const testsEl = document.getElementById('diagMotorTests');
+      const logEl = document.getElementById('diagLog');
+      const stopAllBtn = document.getElementById('diagStopAllBtn');
+      const refreshBtn = document.getElementById('diagRefreshBtn');
+      const testAllBtn = document.getElementById('diagTestAllBtn');
+      if (!testsEl || !tableBody) return;
+
+      let diagPoll = null;
+      let testRunning = false;
+      const JOG_MS = 1500;
+
+      function log(msg) {
+        if (!logEl) return;
+        const t = new Date().toLocaleTimeString();
+        logEl.textContent += `[${t}] ${msg}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function limitLabel(m) {
+        if (!m.hasLimit) return '—';
+        if (m.limitRaw === true) return 'PRESSED';
+        if (m.limitRaw === false) return 'open';
+        return '?';
+      }
+
+      function limitClass(m) {
+        if (!m.hasLimit) return '';
+        return m.limitRaw ? 'diag-err' : 'diag-ok';
+      }
+
+      function renderTable(st) {
+        if (!st?.motors) {
+          tableBody.innerHTML = '<tr><td colspan="6">No data — ESP32 unreachable</td></tr>';
+          return;
+        }
+        tableBody.innerHTML = st.motors.map((m) => {
+          const def = MOTORS.find((d) => d.id === m.id);
+          return `<tr>
+            <td><strong>${def?.label || 'M' + (m.id + 1)}</strong> ${def?.role || ''}</td>
+            <td>${def?.pins || '—'}</td>
+            <td class="${m.homed ? 'diag-ok' : 'diag-warn'}">${m.homed ? 'yes' : 'no'}</td>
+            <td>${m.steps ?? 0}</td>
+            <td class="${limitClass(m)}">${limitLabel(m)}</td>
+            <td class="${m.running ? 'diag-warn' : ''}">${m.running ? 'yes' : '—'}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      function renderConn(st, err) {
+        if (!connEl) return;
+        if (err) {
+          connEl.textContent = `ESP32 unreachable: ${err}`;
+          connEl.className = 'status err';
+          return;
+        }
+        const w = st.wifi || {};
+        let msg = w.connected
+          ? `ESP32 OK · ${w.host || 'arm'}.local · ${w.ip || '?'} · ${w.ssid || ''}`
+          : 'ESP32 reachable but WiFi disconnected';
+        if (st.homing) msg += ` · HOMING M${st.homingMotor + 1}`;
+        if (st.moving) msg += ' · MOVE active';
+        if (st.fail) msg += ` · FAIL: ${st.fail}`;
+        connEl.textContent = msg;
+        connEl.className = 'status ok';
+      }
+
+      async function fetchStatus() {
+        try {
+          const st = await api('/api/status');
+          statusData = st;
+          renderConn(st);
+          renderTable(st);
+          return st;
+        } catch (e) {
+          renderConn(null, e.message);
+          tableBody.innerHTML = '<tr><td colspan="6">Cannot reach /api/status</td></tr>';
+          throw e;
+        }
+      }
+
+      async function jogTest(motorId, dir) {
+        const def = MOTORS.find((d) => d.id === motorId);
+        const label = def ? `${def.label} ${def.role}` : `M${motorId + 1}`;
+        const before = await fetchStatus();
+        const m0 = before.motors?.find((x) => x.id === motorId);
+        const stepsBefore = m0?.steps ?? 0;
+
+        if (before.homing || before.moving) {
+          throw new Error('Stop homing/move first');
+        }
+
+        log(`${label}: jog ${dir.toUpperCase()} ${JOG_MS}ms…`);
+        await apiPost('/api/start', { motor: motorId, dir });
+        await new Promise((r) => setTimeout(r, JOG_MS));
+        await apiPost('/api/stop', { motor: motorId });
+        await new Promise((r) => setTimeout(r, 200));
+
+        const after = await fetchStatus();
+        const m1 = after.motors?.find((x) => x.id === motorId);
+        const stepsAfter = m1?.steps ?? 0;
+        const delta = stepsAfter - stepsBefore;
+
+        let verdict;
+        if (delta === 0) verdict = 'NO STEPS — ESP not pulsing this GPIO (check PUL/DIR pins & GND)';
+        else if (Math.abs(delta) < 20) verdict = `weak (${delta} steps) — check driver 24V / ENA`;
+        else verdict = `OK — ${delta} steps counted (if shaft didn't move → driver/motor phases)`;
+
+        log(`${label} ${dir}: ${stepsBefore} → ${stepsAfter} (${delta >= 0 ? '+' : ''}${delta}) · ${verdict}`);
+        return { delta, verdict, stepsBefore, stepsAfter };
+      }
+
+      testsEl.innerHTML = MOTORS.map((def) => `
+        <div class="diag-motor" data-motor="${def.id}">
+          <h4>${def.label} · ${def.role}</h4>
+          <p class="pins">${def.pins}</p>
+          <div class="btn-row">
+            <button type="button" class="btn-cw diag-jog" data-motor="${def.id}" data-dir="cw">Jog 1.5s CW</button>
+            <button type="button" class="btn-ccw diag-jog" data-motor="${def.id}" data-dir="ccw">Jog 1.5s CCW</button>
+          </div>
+          <div class="diag-result" id="diagResult${def.id}">—</div>
+        </div>
+      `).join('');
+
+      testsEl.querySelectorAll('.diag-jog').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (testRunning) return;
+          const m = +btn.dataset.motor;
+          const dir = btn.dataset.dir;
+          const resultEl = document.getElementById(`diagResult${m}`);
+          testRunning = true;
+          btn.disabled = true;
+          try {
+            const r = await jogTest(m, dir);
+            if (resultEl) resultEl.textContent = `${dir.toUpperCase()}: ${r.stepsBefore}→${r.stepsAfter} (${r.delta >= 0 ? '+' : ''}${r.delta}) — ${r.verdict}`;
+          } catch (e) {
+            log(`Error M${m + 1}: ${e.message}`);
+            if (resultEl) resultEl.textContent = e.message;
+          } finally {
+            testRunning = false;
+            btn.disabled = false;
+            try { await apiPost('/api/stop', { motor: m }); } catch (_) {}
+          }
+        });
+      });
+
+      stopAllBtn?.addEventListener('click', async () => {
+        try {
+          await apiPost('/api/stop_all');
+          log('Stop all sent');
+          await fetchStatus();
+        } catch (e) { log(`Stop all failed: ${e.message}`); }
+      });
+
+      refreshBtn?.addEventListener('click', () => fetchStatus().catch(() => {}));
+
+      testAllBtn?.addEventListener('click', async () => {
+        if (testRunning) return;
+        testRunning = true;
+        testAllBtn.disabled = true;
+        log('=== Run all jog tests (CW) ===');
+        try {
+          await apiPost('/api/stop_all');
+          for (const def of MOTORS) {
+            const r = await jogTest(def.id, 'cw');
+            const resultEl = document.getElementById(`diagResult${def.id}`);
+            if (resultEl) resultEl.textContent = `CW: ${r.stepsBefore}→${r.stepsAfter} (${r.delta >= 0 ? '+' : ''}${r.delta}) — ${r.verdict}`;
+            await new Promise((res) => setTimeout(res, 500));
+          }
+          log('=== All tests done ===');
+        } catch (e) {
+          log(`Test all aborted: ${e.message}`);
+        } finally {
+          testRunning = false;
+          testAllBtn.disabled = false;
+        }
+      });
+
+      document.querySelector('.tab-btn[data-tab="diag"]')?.addEventListener('click', () => {
+        fetchStatus().catch(() => {});
+        if (!diagPoll) diagPoll = setInterval(() => fetchStatus().catch(() => {}), 1000);
+      });
+
+      fetchStatus().catch(() => {});
+    }
+
+    function setupTabs() {
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        });
+      });
+    }
+
+    function buildStepInputs() {
+      stepInputs.innerHTML = MOTORS.map((m) => `
+        <label>${m.label} ${m.role}
+          <input type="number" id="steps_${m.id}" placeholder="steps" data-motor="${m.id}">
+        </label>
+      `).join('');
+    }
+
+    function motorSettingsHtml(m) {
+      return `<div class="motor-set">
+        <label><span>Step delay</span><span id="dval${m}">2600 µs</span></label>
+        <input type="range" id="delay${m}" min="200" max="4000" step="50" value="2600" data-motor="${m}">
+        <label><span>Pulse width</span><span id="pval${m}">1600 µs</span></label>
+        <input type="range" id="pulse${m}" min="100" max="2500" step="50" value="1600" data-motor="${m}">
+        <label class="chk"><input type="checkbox" id="inv${m}" data-motor="${m}"${m === 1 ? ' checked' : ''}> Invert direction</label>
+      </div>`;
+    }
+
+    function limitHtml(m, gpio) {
+      return `<div class="limbox">
+        <div class="led open" id="led${m}"></div>
+        <div>
+          <div class="limtxt" id="limLabel${m}">Limit: …</div>
+          <div class="limsub" id="limRaw${m}">GPIO${gpio}</div>
+        </div>
+      </div>
+      <button type="button" class="btn-cal" id="cal${m}" data-motor="${m}">Calibrate home (CCW to limit)</button>`;
+    }
+
+    function buildMotorPanels() {
+      motorPanels.innerHTML = MOTORS.map((def) => `
+        <div class="motor-panel" data-motor="${def.id}">
+          <h3>${def.label} · ${def.role}</h3>
+          <p class="pins">${def.pins}</p>
+          ${motorSettingsHtml(def.id)}
+          ${def.limitGpio ? limitHtml(def.id, def.limitGpio) : ''}
+          <div class="btn-row">
+            <button type="button" class="btn-cw" data-motor="${def.id}" data-dir="cw">Clockwise</button>
+            <button type="button" class="btn-ccw" data-motor="${def.id}" data-dir="ccw">Counter-clockwise</button>
+          </div>
+          <div class="motor-st" id="motorSt${def.id}">Idle</div>
+        </div>
+      `).join('');
+
+      motorPanels.querySelectorAll('.btn-cw, .btn-ccw').forEach((btn) => {
+        const m = +btn.dataset.motor;
+        const dir = btn.dataset.dir;
+        const down = (e) => {
+          e.preventDefault();
+          if (active[m] || statusData?.homing || statusData?.moving) return;
+          active[m] = dir;
+          startMotor(m, dir);
+        };
+        const up = (e) => {
+          e.preventDefault();
+          if (active[m] === dir) stopMotor(m);
+        };
+        btn.addEventListener('pointerdown', down);
+        btn.addEventListener('pointerup', up);
+        btn.addEventListener('pointercancel', up);
+        btn.addEventListener('pointerleave', up);
+      });
+
+      motorPanels.querySelectorAll('.btn-cal').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const m = +btn.dataset.motor;
+          if (active[m]) stopMotor(m);
+          const st = document.getElementById(`motorSt${m}`);
+          if (st) st.textContent = 'Calibrating…';
+          try {
+            await apiPost('/api/calibrate', { motor: m });
+          } catch (e) {
+            if (st) st.textContent = e.message;
+          }
+        });
+      });
+
+      motorPanels.querySelectorAll('input[data-motor]').forEach((inp) => {
+        const m = +inp.dataset.motor;
+        const go = () => {
+          clearTimeout(saveTimers[m]);
+          saveTimers[m] = setTimeout(() => pushMotorSettings(m), 400);
+        };
+        inp.addEventListener('change', go);
+        inp.addEventListener('input', go);
+      });
+    }
+
+    async function pushMotorSettings(m) {
+      const delay = document.getElementById(`delay${m}`)?.value;
+      const pulse = document.getElementById(`pulse${m}`)?.value;
+      const invert = document.getElementById(`inv${m}`)?.checked ? 1 : 0;
+      const dval = document.getElementById(`dval${m}`);
+      const pval = document.getElementById(`pval${m}`);
+      if (dval) dval.textContent = `${delay} µs`;
+      if (pval) pval.textContent = `${pulse} µs`;
+      await api('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motor: m, delay: +delay, pulse: +pulse, invert }),
+      });
+    }
+
+    async function loadMotorSettings() {
+      try {
+        const arr = await api('/api/settings');
+        arr.forEach((s, i) => {
+          const d = document.getElementById(`delay${i}`);
+          const p = document.getElementById(`pulse${i}`);
+          const inv = document.getElementById(`inv${i}`);
+          if (d) d.value = s.delay;
+          if (p) p.value = s.pulse;
+          if (inv) inv.checked = s.invert;
+          const dval = document.getElementById(`dval${i}`);
+          const pval = document.getElementById(`pval${i}`);
+          if (dval) dval.textContent = `${s.delay} µs`;
+          if (pval) pval.textContent = `${s.pulse} µs`;
+        });
+      } catch (e) {
+        console.warn('Settings load failed:', e);
+      }
+    }
+
+    async function startMotor(m, dir) {
+      const tok = ++runToken[m];
+      const st = document.getElementById(`motorSt${m}`);
+      if (st) st.textContent = dir === 'cw' ? 'Running CW' : 'Running CCW';
+      try {
+        await apiPost('/api/start', { motor: m, dir });
+        if (active[m] !== dir || runToken[m] !== tok) {
+          await apiPost('/api/stop', { motor: m });
+        }
+      } catch (e) {
+        if (st) st.textContent = e.message;
+        active[m] = null;
+      }
+    }
+
+    async function stopMotor(m) {
+      if (active[m] === null) return;
+      runToken[m]++;
+      active[m] = null;
+      const st = document.getElementById(`motorSt${m}`);
+      if (st) st.textContent = 'Idle';
+      try {
+        await apiPost('/api/stop', { motor: m });
+      } catch (e) {
+        if (st) st.textContent = e.message;
+      }
+    }
+
+    async function stopAllMotors() {
+      for (let m = 0; m < 4; m++) {
+        if (active[m] !== null) {
+          runToken[m]++;
+          active[m] = null;
+          const st = document.getElementById(`motorSt${m}`);
+          if (st) st.textContent = 'Idle';
+        }
+      }
+      try {
+        await api('/api/stop_all', { method: 'POST' });
+      } catch (e) {
+        statusLine.classList.add('err');
+        statusLine.textContent = e.message;
+      }
+    }
+
+    window.addEventListener('pointerup', () => {
+      if (anyMotorHeld()) stopAllMotors();
+    });
+    window.addEventListener('pointercancel', () => {
+      if (anyMotorHeld()) stopAllMotors();
+    });
+    window.addEventListener('blur', () => {
+      if (anyMotorHeld()) stopAllMotors();
+    });
+
+    function listSceneNames(root) {
+      const names = [];
+      root.traverse((o) => { if (o.name) names.push(o.name); });
+      return names;
+    }
+
+    function frameModel(object) {
+      const box = new THREE.Box3().setFromObject(object);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z, 1);
+      // Fusion FBX is often in cm — if huge, auto-shrink
+      if (maxDim > 500 && !config._scaleTuned) {
+        const auto = 1 / (maxDim / 200);
+        object.scale.multiplyScalar(auto);
+        box.setFromObject(object);
+        box.getCenter(center);
+        box.getSize(size);
+      }
+      const dim = Math.max(size.x, size.y, size.z, 1);
+      const dist = dim * 2.2;
+      camera.position.set(center.x + dist, center.y + dim * 0.8, center.z + dist);
+      controls.target.copy(center);
+      controls.update();
+    }
+    const wrap = document.getElementById('canvas-wrap');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f1115);
+
+    const camera = new THREE.PerspectiveCamera(50, 1, 1, 2000);
+    camera.position.set(280, 220, 320);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    wrap.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 120, 0);
+    controls.update();
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    key.position.set(200, 400, 150);
+    key.castShadow = true;
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0x88aaff, 0.35);
+    fill.position.set(-200, 100, -100);
+    scene.add(fill);
+
+    const grid = new THREE.GridHelper(600, 30, 0x334155, 0x1e293b);
+    scene.add(grid);
+    scene.add(new THREE.AxesHelper(80));
+
+    const armRoot = new THREE.Group();
+    scene.add(armRoot);
+
+    function mat(color) {
+      return new THREE.MeshStandardMaterial({ color, metalness: 0.25, roughness: 0.65 });
+    }
+
+    function linkBar(length, radius, color) {
+      const m = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius * 0.92, length, 12),
+        mat(color)
+      );
+      m.position.y = length / 2;
+      m.castShadow = true;
+      return m;
+    }
+
+    function basePlate(radius, thickness, color) {
+      const m = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, thickness, 24),
+        mat(color)
+      );
+      m.position.y = thickness / 2;
+      m.receiveShadow = true;
+      return m;
+    }
+
+    function jointRing(radius, color, jointNode) {
+      const m = new THREE.Mesh(
+        new THREE.TorusGeometry(radius, radius * 0.22, 8, 20),
+        mat(color)
+      );
+      m.rotation.x = Math.PI / 2;
+      m.castShadow = true;
+      if (jointNode) {
+        m.userData.jointNode = jointNode;
+        pickableJoints.push(m);
+      }
+      return m;
+    }
+
+    function jointSphere(radius, color, jointNode) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(radius, 12, 12), mat(color));
+      m.castShadow = true;
+      if (jointNode) {
+        m.userData.jointNode = jointNode;
+        pickableJoints.push(m);
+      }
+      return m;
+    }
+
+    function jointCfgByNode(node) {
+      return config?.joints?.find((j) => j.node === node);
+    }
+
+    function setTwinDriveStatus(msg, kind = '') {
+      if (!twinDriveStatus) return;
+      twinDriveStatus.textContent = msg;
+      twinDriveStatus.classList.remove('err', 'warn');
+      if (kind) twinDriveStatus.classList.add(kind);
+    }
+
+    function canLiveDrive() {
+      return liveDrive && statusData?.allHomed && !statusData?.homing;
+    }
+
+    function jointTargetsFromSliders() {
+      const joints = {};
+      for (const j of config.joints) {
+        const user = sliderState[j.node] ?? 0;
+        joints[j.label] = toMotorDeg(j, user);
+      }
+      return joints;
+    }
+
+    function scheduleLiveMove(immediate = false) {
+      if (!config) return;
+      pendingJoints = jointTargetsFromSliders();
+      if (!canLiveDrive()) {
+        setTwinDriveStatus('Preview only — home the arm to enable live drive.', 'warn');
+        return;
+      }
+      clearTimeout(moveTimer);
+      if (immediate) {
+        flushLiveMove();
+      } else {
+        moveTimer = setTimeout(flushLiveMove, 120);
+      }
+    }
+
+    async function flushLiveMove() {
+      clearTimeout(moveTimer);
+      if (!pendingJoints || !canLiveDrive()) return;
+      if (statusData?.moving || statusData?.homing || moveInFlight) return;
+      const joints = { ...pendingJoints };
+      moveInFlight = true;
+      setTwinDriveStatus('Sending to arm…');
+      try {
+        await api('/api/move/degrees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ joints }),
+        });
+        pendingJoints = null;
+        setTwinDriveStatus('Arm following model');
+      } catch (e) {
+        setTwinDriveStatus(e.message, 'err');
+      } finally {
+        moveInFlight = false;
+      }
+    }
+
+    function applyJointDegrees(j, deg) {
+      const clamped = Math.max(j.min_deg, Math.min(j.max_deg, Math.round(deg)));
+      sliderState[j.node] = clamped;
+      const inp = jointSliders?.querySelector(`input[data-node="${j.node}"]`);
+      const valEl = document.getElementById(`val_${j.node}`);
+      if (inp) inp.value = clamped;
+      if (valEl) valEl.textContent = `${clamped}°`;
+      setJointAngle(j, clamped);
+      return clamped;
+    }
+
+    function updateHomedBadges() {
+      if (!homedBadges || !config) return;
+      const motors = statusData?.motors || [];
+      homedBadges.innerHTML = config.joints.filter((j) => !isWristJoint(j)).map((j) => {
+        const m = motors.find((x) => x.id === j.motor);
+        const homed = m?.homed;
+        return `<span class="badge ${homed ? 'ok' : ''}">${j.label} ${homed ? 'homed' : 'not homed'}</span>`;
+      }).join('');
+    }
+
+    function updateTwinCalibUI() {
+      if (!statusData) return;
+      updateHomedBadges();
+      if (liveDriveInput) liveDriveInput.disabled = !statusData.allHomed;
+      if (statusData.homing) {
+        twinCalibStatus.textContent = `Homing M${statusData.homingMotor + 1}…`;
+        setTwinDriveStatus('Homing…', 'warn');
+      } else if (statusData.allHomed) {
+        twinCalibStatus.textContent = 'Calibrated — 0° at limit switch (not vertical). Vertical ≈ half of max travel.';
+        if (canLiveDrive()) setTwinDriveStatus('Live drive on — drag model or sliders');
+        else setTwinDriveStatus('Live drive paused');
+      } else if (statusData.fail) {
+        twinCalibStatus.textContent = `Homing failed: ${statusData.fail}`;
+        setTwinDriveStatus('Fix homing, then try again', 'err');
+      } else {
+        twinCalibStatus.textContent = 'Not homed — run Home all before live drive.';
+        setTwinDriveStatus('Home required before live drive.', 'warn');
+      }
+    }
+
+    function jointByLabel(label) {
+      return config?.joints?.find((j) => j.label === label);
+    }
+
+    function linkGeom() {
+      const L = config?.links_mm || {};
+      const plateH = L.base_plate_height ?? 27;
+      const shoulderY = L.shoulder_offset ?? 0;
+      return {
+        H: plateH + shoulderY,
+        L1: L.upper_arm ?? 187,
+        L2: (L.forearm ?? 0) + (L.gripper ?? 0),
+      };
+    }
+
+    function modelToUserDeg(j, modelRad) {
+      const sign = j.sign ?? 1;
+      return jointVerticalDeg(j) + (modelRad / RAD) / sign;
+    }
+
+    function clampJointUser(j, deg) {
+      return Math.max(j.min_deg, Math.min(j.max_deg, deg));
+    }
+
+    function fkTipFromUserJoints(joints) {
+      if (!armTip) return null;
+      const saved = {};
+      for (const j of config.joints) {
+        const node = jointNodes[j.node];
+        if (!node) continue;
+        saved[j.node] = node.rotation.clone();
+        if (joints[j.label] != null) setJointAngle(j, joints[j.label]);
+      }
+      armRoot.updateMatrixWorld(true);
+      const p = new THREE.Vector3();
+      armTip.getWorldPosition(p);
+      for (const j of config.joints) {
+        const node = jointNodes[j.node];
+        if (node && saved[j.node]) node.rotation.copy(saved[j.node]);
+      }
+      return p;
+    }
+
+    function solveIk(target) {
+      const { H, L1, L2 } = linkGeom();
+      const j4 = jointByLabel('M4');
+      const j2 = jointByLabel('M2');
+      const j3 = jointByLabel('M3');
+      if (!j4 || !j2 || !j3) return { ok: false, msg: 'Joint config missing' };
+      if (L2 < 1) return { ok: false, msg: 'Set forearm (elbow→wrist) length in Stick model' };
+
+      const tx = target.x;
+      const ty = target.y;
+      const tz = target.z;
+      // Match Three.js Y rotation on joint_m4: world z = -bx*sin(θ4)
+      const theta4 = Math.atan2(-tz, tx);
+      const c4 = Math.cos(theta4);
+      const s4 = Math.sin(theta4);
+      const px = tx * c4 - tz * s4;
+      const py = ty - H;
+      const r2 = px * px + py * py;
+      const r = Math.sqrt(r2);
+
+      if (r > L1 + L2 - 0.5) return { ok: false, msg: `Out of reach (${Math.round(r)} mm > ${Math.round(L1 + L2)} mm)` };
+      if (r < Math.abs(L1 - L2) + 0.5) return { ok: false, msg: 'Target too close to shoulder' };
+
+      const cosPsi = (r2 - L1 * L1 - L2 * L2) / (2 * L1 * L2);
+      const psi = Math.acos(Math.max(-1, Math.min(1, cosPsi)));
+      const phi = Math.atan2(px, py);
+      const kappa = Math.atan2(L2 * Math.sin(psi), L1 + L2 * Math.cos(psi));
+
+      const candidates = [
+        { theta2: phi - kappa, theta3: psi },
+        { theta2: phi + kappa, theta3: -psi },
+      ];
+
+      let best = null;
+      for (const cand of candidates) {
+        const joints = {
+          M4: clampJointUser(j4, modelToUserDeg(j4, theta4)),
+          M2: clampJointUser(j2, modelToUserDeg(j2, cand.theta2)),
+          M3: clampJointUser(j3, modelToUserDeg(j3, cand.theta3)),
+        };
+        const tip = fkTipFromUserJoints(joints);
+        if (!tip) continue;
+        const err = tip.distanceTo(target);
+        const raw = {
+          M4: modelToUserDeg(j4, theta4),
+          M2: modelToUserDeg(j2, cand.theta2),
+          M3: modelToUserDeg(j3, cand.theta3),
+        };
+        const clamped = ['M4', 'M2', 'M3'].some((k) => Math.abs(joints[k] - raw[k]) > 0.01);
+        const score = err + (clamped ? 500 : 0);
+        if (!best || score < best.score) best = { joints, err, score, clamped };
+      }
+
+      if (!best) return { ok: false, msg: 'IK failed' };
+      if (best.err > 15) {
+        return { ok: false, msg: `No valid pose (tip ${Math.round(best.err)} mm from target)` };
+      }
+
+      const joints = {
+        M4: Math.round(best.joints.M4),
+        M2: Math.round(best.joints.M2),
+        M3: Math.round(best.joints.M3),
+      };
+      return { ok: true, joints, errMm: best.err, clamped: best.clamped };
+    }
+
+    function findIkHeightPresets() {
+      const j2 = jointByLabel('M2');
+      const j3 = jointByLabel('M3');
+      const j4 = jointByLabel('M4');
+      if (!j2 || !j3 || !j4) {
+        return IK_PRESET_LABELS.map((label, id) => ({
+          id,
+          label,
+          color: IK_PRESET_COLORS[id],
+          M2: 30 + id * 15,
+          M3: 100 + id * 20,
+          height: 120 + id * 40,
+        }));
+      }
+
+      const midM4 = Math.round((j4.min_deg + j4.max_deg) / 2);
+      const candidates = [];
+      for (let m2 = j2.min_deg; m2 <= j2.max_deg; m2 += 6) {
+        for (let m3 = j3.min_deg; m3 <= j3.max_deg; m3 += 8) {
+          const joints = { M4: midM4, M2: m2, M3: m3 };
+          const tip = fkTipFromUserJoints(joints);
+          if (!tip) continue;
+          candidates.push({ M2: m2, M3: m3, height: tip.y });
+        }
+      }
+
+      if (!candidates.length) {
+        return [{
+          id: 0,
+          label: 'Mid',
+          color: IK_PRESET_COLORS[1],
+          M2: Math.round(jointVerticalDeg(j2)),
+          M3: Math.round(jointVerticalDeg(j3)),
+          height: linkGeom().H,
+        }];
+      }
+
+      candidates.sort((a, b) => a.height - b.height);
+      const picked = [];
+      const minSep = Math.max(12, 72 / IK_PRESET_COUNT);
+      for (let i = 0; i < IK_PRESET_COUNT; i++) {
+        const t = IK_PRESET_COUNT <= 1 ? 0.5 : i / (IK_PRESET_COUNT - 1);
+        const idx = Math.round(t * (candidates.length - 1));
+        const c = candidates[idx];
+        if (picked.some((p) => Math.abs(p.height - c.height) < minSep)) continue;
+        picked.push({
+          id: picked.length,
+          label: IK_PRESET_LABELS[picked.length] || `Level ${picked.length + 1}`,
+          color: IK_PRESET_COLORS[picked.length] || IK_PRESET_COLORS[0],
+          M2: Math.round(clampJointUser(j2, c.M2)),
+          M3: Math.round(clampJointUser(j3, c.M3)),
+          height: c.height,
+        });
+      }
+
+      while (picked.length < IK_PRESET_COUNT && picked.length < candidates.length) {
+        const c = candidates[Math.min(candidates.length - 1, picked.length * 12)];
+        if (!picked.some((p) => Math.abs(p.height - c.height) < minSep)) {
+          picked.push({
+            id: picked.length,
+            label: IK_PRESET_LABELS[picked.length] || `Level ${picked.length + 1}`,
+            color: IK_PRESET_COLORS[picked.length] || IK_PRESET_COLORS[0],
+            M2: Math.round(clampJointUser(j2, c.M2)),
+            M3: Math.round(clampJointUser(j3, c.M3)),
+            height: c.height,
+          });
+        } else break;
+      }
+
+      return picked;
+    }
+
+    function clearIkRingLines() {
+      if (ikRingGroup) {
+        scene.remove(ikRingGroup);
+        ikRingGroup.traverse((c) => {
+          if (c.geometry) c.geometry.dispose();
+          if (c.material) c.material.dispose();
+        });
+      }
+      ikRingGroup = new THREE.Group();
+      ikRingGroup.name = 'ik_rings';
+      scene.add(ikRingGroup);
+    }
+
+    function addIkRingLine(points, color) {
+      if (!ikRingGroup || points.length < 2) return;
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(points),
+        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }),
+      );
+      line.visible = ikMode;
+      line.renderOrder = 2;
+      ikRingGroup.add(line);
+    }
+
+    function hexColor(n) {
+      return `#${n.toString(16).padStart(6, '0')}`;
+    }
+
+    function buildIkHeightUi() {
+      const row = document.getElementById('ikHeightRow');
+      if (!row) return;
+      row.toggleAttribute('hidden', !ikMode);
+      let html = `<button type="button" class="ik-height-btn${ikActivePresetFilter === 'all' ? ' active' : ''}" data-preset="all">All heights</button>`;
+      for (const p of ikHeightPresets) {
+        const active = ikActivePresetFilter === p.id;
+        html += `<button type="button" class="ik-height-btn${active ? ' active' : ''}" data-preset="${p.id}" style="border-left:3px solid ${hexColor(p.color)}">${p.label} · ${Math.round(p.height)} mm<br><span style="font-weight:400;color:#8b93a7">M2 ${p.M2}° · M3 ${p.M3}°</span></button>`;
+      }
+      row.innerHTML = html;
+      row.querySelectorAll('.ik-height-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          ikActivePresetFilter = btn.dataset.preset === 'all' ? 'all' : +btn.dataset.preset;
+          buildIkHeightUi();
+          updateIkMarkerVisibility();
+          clearIkSnapUi();
+        });
+      });
+    }
+
+    function updateIkMarkerVisibility() {
+      for (const m of ikSnapMarkerMeshes) {
+        const sp = m.userData.snapPoint;
+        const show = ikActivePresetFilter === 'all' || sp?.presetId === ikActivePresetFilter;
+        m.visible = show;
+      }
+      if (!ikRingGroup) return;
+      ikRingGroup.children.forEach((line, i) => {
+        const preset = ikHeightPresets[i];
+        line.visible = ikMode && (ikActivePresetFilter === 'all' || preset?.id === ikActivePresetFilter);
+      });
+    }
+
+    function clearIkSnapMarkerMeshes() {
+      if (ikSnapMarkerGroup) {
+        scene.remove(ikSnapMarkerGroup);
+        ikSnapMarkerGroup.traverse((c) => {
+          if (c.geometry) c.geometry.dispose();
+          if (c.material) c.material.dispose();
+        });
+      }
+      ikSnapMarkerMeshes = [];
+      ikSnapMarkerGroup = new THREE.Group();
+      ikSnapMarkerGroup.name = 'ik_snap_markers';
+      scene.add(ikSnapMarkerGroup);
+    }
+
+    function addIkSnapMarker(entry) {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(8, 12, 12),
+        new THREE.MeshStandardMaterial({
+          color: entry.color,
+          emissive: entry.color,
+          emissiveIntensity: 0.35,
+        }),
+      );
+      m.position.copy(entry.point);
+      m.userData.snapPoint = entry;
+      m.renderOrder = 5;
+      ikSnapMarkerGroup.add(m);
+      ikSnapMarkerMeshes.push(m);
+    }
+
+    function highlightIkSnapMarker(activeId) {
+      ikActiveSnapId = activeId;
+      for (const m of ikSnapMarkerMeshes) {
+        const sp = m.userData.snapPoint;
+        if (!sp) continue;
+        const on = sp.id === activeId;
+        const dimmed = ikActivePresetFilter !== 'all' && sp.presetId !== ikActivePresetFilter;
+        m.scale.setScalar(on ? 1.35 : 1);
+        m.material.emissiveIntensity = on ? 0.75 : dimmed ? 0.15 : 0.35;
+        m.material.opacity = dimmed ? 0.35 : 1;
+        m.material.transparent = true;
+      }
+    }
+
+    function rebuildIkSnapPoints() {
+      ikSnapPoints.length = 0;
+      ikHeightPresets.length = 0;
+      buildIkVisuals();
+      clearIkSnapMarkerMeshes();
+      clearIkRingLines();
+      if (!config || !armTip || !jointNodes.joint_m2) return;
+
+      ikHeightPresets.push(...findIkHeightPresets());
+      const j4 = jointByLabel('M4');
+      const j2 = jointByLabel('M2');
+      const j3 = jointByLabel('M3');
+      if (!j4 || !j2 || !j3) return;
+
+      let globalId = 0;
+      for (const preset of ikHeightPresets) {
+        const ringPts = [];
+        for (let i = 0; i < IK_SNAP_COUNT; i++) {
+          const t = IK_SNAP_COUNT <= 1 ? 0.5 : i / (IK_SNAP_COUNT - 1);
+          const ua4 = Math.round(j4.min_deg + t * (j4.max_deg - j4.min_deg));
+          const joints = {
+            M4: clampJointUser(j4, ua4),
+            M2: clampJointUser(j2, preset.M2),
+            M3: clampJointUser(j3, preset.M3),
+          };
+          const tip = fkTipFromUserJoints(joints);
+          if (!tip) continue;
+          const entry = {
+            id: globalId++,
+            presetId: preset.id,
+            presetLabel: preset.label,
+            color: preset.color,
+            heightMm: tip.y,
+            point: tip.clone(),
+            joints,
+          };
+          ikSnapPoints.push(entry);
+          ringPts.push(entry.point);
+          addIkSnapMarker(entry);
+        }
+        addIkRingLine(ringPts, preset.color);
+      }
+
+      updateIkMarkerVisibility();
+      buildIkHeightUi();
+      if (ikMode && ikSnapPoints.length) {
+        const heights = ikHeightPresets.map((p) => `${p.label} ${Math.round(p.height)}mm`).join(' · ');
+        setIkStatus(`${ikHeightPresets.length} rings · ${ikSnapPoints.length} targets · ${heights}`);
+      }
+    }
+
+    function updateIkRingVisuals() {
+      if (!ikRingGroup) return;
+      ikRingGroup.children.forEach((line) => { line.visible = ikMode; });
+      updateIkMarkerVisibility();
+    }
+
+    function buildIkVisuals() {
+      if (ikPreviewLine) return;
+
+      ikHoverMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(7, 14, 14),
+        new THREE.MeshStandardMaterial({
+          color: 0x22c55e,
+          emissive: 0x14532d,
+          emissiveIntensity: 0.5,
+          transparent: true,
+          opacity: 0.85,
+        }),
+      );
+      ikHoverMarker.visible = false;
+      ikHoverMarker.renderOrder = 4;
+      scene.add(ikHoverMarker);
+
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+      ikPreviewLine = new THREE.Line(
+        lineGeo,
+        new THREE.LineDashedMaterial({ color: 0x60a5fa, dashSize: 12, gapSize: 8, transparent: true, opacity: 0.7 }),
+      );
+      ikPreviewLine.visible = false;
+      ikPreviewLine.renderOrder = 3;
+      scene.add(ikPreviewLine);
+    }
+
+    function getShoulderWorld() {
+      if (!jointNodes.joint_m2) return null;
+      armRoot.updateMatrixWorld(true);
+      jointNodes.joint_m2.getWorldPosition(ikShoulderPos);
+      return ikShoulderPos;
+    }
+
+    function worldToClientXY(world) {
+      ikProjected.copy(world).project(camera);
+      const r = renderer.domElement.getBoundingClientRect();
+      return {
+        x: (ikProjected.x * 0.5 + 0.5) * r.width + r.left,
+        y: (-ikProjected.y * 0.5 + 0.5) * r.height + r.top,
+        onScreen: ikProjected.z > -1 && ikProjected.z < 1,
+      };
+    }
+
+    function nearestSnapPoint(clientX, clientY) {
+      let best = null;
+      for (const sp of ikSnapPoints) {
+        if (ikActivePresetFilter !== 'all' && sp.presetId !== ikActivePresetFilter) continue;
+        const screen = worldToClientXY(sp.point);
+        if (!screen.onScreen) continue;
+        const dist = Math.hypot(screen.x - clientX, screen.y - clientY);
+        if (dist <= IK_SNAP_PX && (!best || dist < best.dist)) {
+          best = { snap: sp, screen, dist };
+        }
+      }
+      return best;
+    }
+
+    function setIkSnapCursor(screen, visible) {
+      const el = document.getElementById('ikSnapCursor');
+      if (!el) return;
+      if (!visible || !screen?.onScreen) {
+        el.hidden = true;
+        return;
+      }
+      el.style.left = `${screen.x}px`;
+      el.style.top = `${screen.y}px`;
+      el.hidden = false;
+    }
+
+    function setIkCanvasSnapState(valid) {
+      const canvas = renderer.domElement;
+      canvas.classList.toggle('ik-snap-valid', valid);
+      canvas.classList.toggle('ik-snap-invalid', !valid);
+    }
+
+    function clearIkSnapUi() {
+      ikSnapState = null;
+      setIkSnapCursor(null, false);
+      setIkCanvasSnapState(false);
+      setIkHoverPoint(null);
+      highlightIkSnapMarker(-1);
+      renderer.domElement.classList.remove('ik-snap-valid', 'ik-snap-invalid');
+    }
+
+    function resolveIkPick(e) {
+      const el = renderer.domElement;
+      const r = el.getBoundingClientRect();
+      pointerNdc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+      pointerNdc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNdc, camera);
+
+      const markerHits = raycaster.intersectObjects(
+        ikSnapMarkerMeshes.filter((m) => m.visible),
+        false,
+      );
+      if (markerHits.length) {
+        const snap = markerHits[0].object.userData.snapPoint;
+        return { valid: true, snap, screen: worldToClientXY(snap.point) };
+      }
+
+      const nearest = nearestSnapPoint(e.clientX, e.clientY);
+      if (nearest) return { valid: true, snap: nearest.snap, screen: nearest.screen };
+      return { valid: false };
+    }
+
+    function updateIkSnapFromEvent(e) {
+      if (!ikMode || ikPending || !ikSnapPoints.length) {
+        clearIkSnapUi();
+        return;
+      }
+
+      const pick = resolveIkPick(e);
+      if (!pick.valid) {
+        ikSnapState = null;
+        setIkSnapCursor(null, false);
+        setIkCanvasSnapState(false);
+        setIkHoverPoint(null);
+        highlightIkSnapMarker(-1);
+        return;
+      }
+
+      ikSnapState = pick;
+      setIkSnapCursor(pick.screen, true);
+      setIkCanvasSnapState(true);
+      setIkHoverPoint(pick.snap.point, pick.snap.color);
+      highlightIkSnapMarker(pick.snap.id);
+    }
+
+    function updateIkPreviewLine(toPoint) {
+      if (!ikPreviewLine || !armTip) return;
+      if (!toPoint) {
+        ikPreviewLine.visible = false;
+        return;
+      }
+      armRoot.updateMatrixWorld(true);
+      const from = new THREE.Vector3();
+      armTip.getWorldPosition(from);
+      ikPreviewLine.geometry.setFromPoints([from, toPoint]);
+      ikPreviewLine.computeLineDistances();
+      ikPreviewLine.visible = true;
+    }
+
+    function setIkVisualsActive(active) {
+      buildIkVisuals();
+      const show = active && !!config;
+      if (ikRingGroup) ikRingGroup.visible = show;
+      if (ikSnapMarkerGroup) ikSnapMarkerGroup.visible = show;
+      if (!show) {
+        clearIkSnapUi();
+        updateIkPreviewLine(null);
+        document.getElementById('ikHeightRow')?.toggleAttribute('hidden', true);
+      } else if (!ikSnapPoints.length) {
+        rebuildIkSnapPoints();
+      } else {
+        updateIkRingVisuals();
+        buildIkHeightUi();
+        if (ikSnapMarkerGroup) ikSnapMarkerGroup.visible = true;
+      }
+      renderer.domElement.classList.remove('ik-snap-valid', 'ik-snap-invalid');
+      document.getElementById('ikOverlay')?.toggleAttribute('hidden', !show);
+      document.getElementById('ikLegend')?.toggleAttribute('hidden', !show);
+    }
+
+    function sliderSnapshot() {
+      const snap = {};
+      for (const j of config?.joints || []) snap[j.node] = sliderState[j.node] ?? 0;
+      return snap;
+    }
+
+    function restoreSliderSnapshot(snap) {
+      if (!snap || !config) return;
+      for (const j of config.joints) {
+        if (snap[j.node] != null) applyJointDegrees(j, snap[j.node]);
+      }
+    }
+
+    function setIkConfirmUi(hasPending) {
+      const row = document.getElementById('ikConfirmRow');
+      const confirmBtn = document.getElementById('ikConfirmBtn');
+      const wristRow = document.getElementById('ikWristRow');
+      if (row) row.toggleAttribute('hidden', !hasPending);
+      if (wristRow) wristRow.toggleAttribute('hidden', !hasPending);
+      if (confirmBtn) confirmBtn.disabled = !hasPending;
+    }
+
+    function clearIkPending(restore = true) {
+      if (ikPending && restore) restoreSliderSnapshot(ikPending.prevSliders);
+      ikPending = null;
+      setIkConfirmUi(false);
+      if (ikTargetMarker) ikTargetMarker.visible = false;
+      updateIkPreviewLine(null);
+    }
+
+    function previewIkSnap(snap) {
+      if (!snap?.joints) return;
+      if (ikPending) clearIkPending(true);
+
+      const marker = ensureIkTargetMarker();
+      marker.position.copy(snap.point);
+      marker.visible = true;
+
+      const prevSliders = sliderSnapshot();
+      for (const j of config.joints) {
+        if (isWristJoint(j)) continue;
+        const deg = snap.joints[j.label];
+        if (deg != null) applyJointDegrees(j, deg);
+      }
+      const j1 = jointByLabel('M1');
+      const wristNow = j1 ? (sliderState[j1.node] ?? 0) : 0;
+      setIkWristRot(wristNow);
+      if (j1) applyJointDegrees(j1, wristNow);
+
+      ikPending = {
+        point: snap.point.clone(),
+        joints: { ...snap.joints },
+        prevSliders,
+        result: { ok: true, joints: snap.joints, errMm: 0, clamped: false },
+      };
+      clearIkSnapUi();
+      updateIkPreviewLine(snap.point);
+      setIkConfirmUi(true);
+      setIkStatus(
+        `Preview [${snap.presetLabel}] — M4 ${snap.joints.M4}° · M2 ${snap.joints.M2}° · M3 ${snap.joints.M3}° · set phone rotation · Confirm.`,
+      );
+    }
+
+    function confirmIkMove() {
+      if (!ikPending) return;
+      const { joints, result } = ikPending;
+      const j1 = jointByLabel('M1');
+      const wristDeg = readIkWristRot();
+      if (j1) applyJointDegrees(j1, wristDeg);
+      ikPending = null;
+      setIkConfirmUi(false);
+      updateIkPreviewLine(null);
+      const errNote = result.errMm != null ? ` · tip ${result.errMm.toFixed(1)} mm` : '';
+      const wristNote = j1 ? ` · M1 ${wristDeg}°` : '';
+      setIkStatus(
+        `Moving → M4 ${joints.M4}° · M2 ${joints.M2}° · M3 ${joints.M3}°${wristNote}${errNote}`,
+      );
+      scheduleLiveMove(true);
+    }
+
+    function cancelIkPreview() {
+      if (!ikPending) return;
+      clearIkPending(true);
+      setIkStatus('Preview cancelled — hover a green dot on the ring');
+    }
+
+    function setIkHoverPoint(worldPoint, color = 0x22c55e) {
+      if (!ikHoverMarker) return;
+      if (!worldPoint) {
+        ikHoverMarker.visible = false;
+        return;
+      }
+      ikHoverMarker.position.copy(worldPoint);
+      ikHoverMarker.material.color.setHex(color);
+      ikHoverMarker.material.emissive.setHex(color);
+      ikHoverMarker.visible = true;
+    }
+
+    function ensureIkTargetMarker() {
+      if (ikTargetMarker) return ikTargetMarker;
+      ikTargetMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(6, 12, 12),
+        new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0x7c2d12, emissiveIntensity: 0.35 })
+      );
+      ikTargetMarker.visible = false;
+      scene.add(ikTargetMarker);
+      return ikTargetMarker;
+    }
+
+    function setIkStatus(msg, kind = '') {
+      const el = document.getElementById('ikStatus');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('err', 'warn');
+      if (kind) el.classList.add(kind);
+    }
+
+    function setup3dJointDrag() {
+      const el = renderer.domElement;
+      el.style.touchAction = 'none';
+
+      function pointerToNdc(e) {
+        const r = el.getBoundingClientRect();
+        pointerNdc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+        pointerNdc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      }
+
+      function pickJoint(e) {
+        pointerToNdc(e);
+        raycaster.setFromCamera(pointerNdc, camera);
+        const hits = raycaster.intersectObjects(pickableJoints, false);
+        if (!hits.length) return null;
+        const node = hits[0].object.userData.jointNode;
+        return jointCfgByNode(node);
+      }
+
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        if (ikMode) {
+          const pick = resolveIkPick(e);
+          if (pick.valid) {
+            e.preventDefault();
+            previewIkSnap(pick.snap);
+          }
+          return;
+        }
+        const j = pickJoint(e);
+        if (!j) return;
+        e.preventDefault();
+        dragJoint3d = { cfg: j, lastY: e.clientY };
+        dragging[j.node] = true;
+        controls.enabled = false;
+        el.setPointerCapture(e.pointerId);
+      });
+
+      el.addEventListener('pointermove', (e) => {
+        if (ikMode && !dragJoint3d) updateIkSnapFromEvent(e);
+        if (!dragJoint3d) return;
+        const dy = e.clientY - dragJoint3d.lastY;
+        dragJoint3d.lastY = e.clientY;
+        const cur = sliderState[dragJoint3d.cfg.node] ?? 0;
+        applyJointDegrees(dragJoint3d.cfg, cur - dy * 0.4);
+        scheduleLiveMove();
+      });
+
+      function endDrag(e) {
+        if (!dragJoint3d) return;
+        const j = dragJoint3d.cfg;
+        dragJoint3d = null;
+        dragging[j.node] = false;
+        controls.enabled = true;
+        try { el.releasePointerCapture(e.pointerId); } catch (_) { /* ok */ }
+        scheduleLiveMove(true);
+      }
+
+      el.addEventListener('pointerup', endDrag);
+      el.addEventListener('pointercancel', endDrag);
+      el.addEventListener('pointerleave', () => {
+        if (ikMode) clearIkSnapUi();
+      });
+    }
+
+    function buildProceduralArm() {
+      armRoot.clear();
+      jointNodes = {};
+      pickableJoints = [];
+
+      const L = config.links_mm || {};
+      const plateH = L.base_plate_height ?? 27;
+      const shoulderY = L.shoulder_offset ?? Math.max(0, (L.base_height ?? 90) - plateH);
+      const totalToShoulder = plateH + shoulderY;
+      const upper = L.upper_arm ?? 110;
+      const fore = L.forearm ?? 0;
+      const grip = L.gripper ?? L.end ?? 0;
+      const r = L.link_radius ?? 5;
+      const plateD = L.base_plate_diameter ?? (L.base_plate_radius ? L.base_plate_radius * 2 : r * 16);
+      const plateR = plateD / 2;
+
+      const base = new THREE.Group();
+      base.name = 'joint_m4';
+      base.add(basePlate(plateR, plateH, 0x2a3348));
+      const post = new THREE.Group();
+      post.position.y = plateH;
+      post.add(linkBar(shoulderY, r * 1.35, 0x3b4a6b));
+      base.add(post);
+      base.add(jointSphere(r * 2.2, 0x5a6a8b, 'joint_m4'));
+      base.add(jointRing(r * 2.6, 0x7eb8ff, 'joint_m4'));
+      armRoot.add(base);
+      jointNodes.joint_m4 = base;
+
+      const shoulderPivot = new THREE.Group();
+      shoulderPivot.name = 'joint_m2';
+      shoulderPivot.position.y = totalToShoulder;
+      shoulderPivot.add(linkBar(upper, r, 0x4a9c59));
+      shoulderPivot.add(jointSphere(r * 1.6, 0x6abc79, 'joint_m2'));
+      shoulderPivot.add(jointRing(r * 2, 0x86efac, 'joint_m2'));
+      base.add(shoulderPivot);
+      jointNodes.joint_m2 = shoulderPivot;
+
+      const elbowPivot = new THREE.Group();
+      elbowPivot.name = 'joint_m3';
+      elbowPivot.position.y = upper;
+      if (fore > 0) elbowPivot.add(linkBar(fore, r * 0.85, 0x9c7a4a));
+      elbowPivot.add(jointSphere(r * 1.5, 0xbc9a6a, 'joint_m3'));
+      elbowPivot.add(jointRing(r * 1.9, 0xfbbf24, 'joint_m3'));
+      shoulderPivot.add(elbowPivot);
+      jointNodes.joint_m3 = elbowPivot;
+
+      const wristPivot = new THREE.Group();
+      wristPivot.name = 'joint_m1';
+      wristPivot.position.y = fore;
+      const phoneLineLen = Math.max(r * 7, 28);
+      const phoneBottomGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, -phoneLineLen),
+      ]);
+      const phoneBottomLine = new THREE.Line(
+        phoneBottomGeo,
+        new THREE.LineBasicMaterial({ color: 0xff4466, transparent: true, opacity: 0.95 }),
+      );
+      phoneBottomLine.renderOrder = 5;
+      wristPivot.add(phoneBottomLine);
+      wristPivot.add(jointSphere(r * 1.2, 0xc084fc, 'joint_m1'));
+      wristPivot.add(jointRing(r * 1.5, 0xe879f9, 'joint_m1'));
+      elbowPivot.add(wristPivot);
+      jointNodes.joint_m1 = wristPivot;
+
+      const tipLen = grip;
+      armTip = new THREE.Group();
+      armTip.name = 'arm_tip';
+      armTip.position.y = tipLen > 0 ? tipLen : 0;
+      armTip.add(new THREE.Mesh(
+        new THREE.SphereGeometry(Math.max(r * 1.1, 4), 12, 12),
+        mat(0xf97316)
+      ));
+      wristPivot.add(armTip);
+      if (grip > 0) {
+        const gBar = linkBar(grip, r * 0.65, 0x9aa3b5);
+        gBar.position.y = grip / 2;
+        wristPivot.add(gBar);
+      }
+
+      frameModel(armRoot);
+      rebuildIkSnapPoints();
+      const reach = upper + fore + grip;
+      const parts = [`base Ø${plateD}×${plateH}`, `post ${shoulderY}`, `upper ${upper}`];
+      if (fore > 0) parts.push(`elbow ${fore}`);
+      if (grip > 0) parts.push(`grip ${grip}`);
+      setModelInfo(`Stick model · ${parts.join(' · ')} mm · reach ${reach} mm`);
+      for (const j of config.joints) {
+        const deg = sliderState[j.node] ?? 0;
+        setJointAngle(j, Math.max(j.min_deg, Math.min(j.max_deg, deg)));
+      }
+    }
+
+    function fillStickForm() {
+      const L = config?.links_mm || {};
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val ?? '';
+      };
+      const plateD = L.base_plate_diameter ?? (L.base_plate_radius ? L.base_plate_radius * 2 : 200);
+      const plateH = L.base_plate_height ?? 27;
+      const shoulderY = L.shoulder_offset ?? Math.max(0, (L.base_height ?? 90) - plateH);
+      set('dim_base_diameter', plateD);
+      set('dim_base_plate_height', plateH);
+      set('dim_shoulder_offset', shoulderY);
+      set('dim_upper_arm', L.upper_arm ?? 180);
+      set('dim_forearm', L.forearm ?? 0);
+      set('dim_gripper', L.gripper ?? L.end ?? 0);
+
+      const rows = document.getElementById('stickLimitRows');
+      if (!rows || !config?.joints) return;
+      rows.innerHTML = config.joints.map((j) => `
+        <div class="lim-row" data-label="${j.label}">
+          <strong>${j.label}</strong>
+          <input type="number" class="lim-min" value="${j.min_deg}" step="1" title="min °">
+          <input type="number" class="lim-max" value="${j.max_deg}" step="1" title="max °">
+        </div>
+      `).join('');
+    }
+
+    function readStickForm() {
+      const num = (id) => {
+        const v = parseFloat(document.getElementById(id)?.value);
+        return Number.isFinite(v) ? v : 0;
+      };
+      const plateH = num('dim_base_plate_height');
+      const shoulderY = num('dim_shoulder_offset');
+      const plateD = num('dim_base_diameter');
+      const links_mm = {
+        base_plate_diameter: plateD,
+        base_plate_height: plateH,
+        base_plate_radius: plateD / 2,
+        shoulder_offset: shoulderY,
+        base_height: plateH + shoulderY,
+        upper_arm: num('dim_upper_arm'),
+        forearm: num('dim_forearm'),
+        gripper: num('dim_gripper'),
+        link_radius: config?.links_mm?.link_radius ?? 5,
+      };
+      const joints = (config?.joints || []).map((j) => {
+        const row = document.querySelector(`.lim-row[data-label="${j.label}"]`);
+        const min = parseFloat(row?.querySelector('.lim-min')?.value);
+        const max = parseFloat(row?.querySelector('.lim-max')?.value);
+        return {
+          label: j.label,
+          min_deg: Number.isFinite(min) ? min : j.min_deg,
+          max_deg: Number.isFinite(max) ? max : j.max_deg,
+        };
+      });
+      return { links_mm, joints };
+    }
+
+    async function saveStickModel() {
+      const status = document.getElementById('stickSaveStatus');
+      const btn = document.getElementById('stickSaveBtn');
+      const payload = readStickForm();
+      if (payload.links_mm.base_plate_height < 1 || payload.links_mm.upper_arm < 1) {
+        if (status) {
+          status.textContent = 'Base plate height and upper arm must be at least 1 mm.';
+          status.style.color = '#f87171';
+        }
+        return;
+      }
+      for (const j of payload.joints) {
+        if (j.max_deg <= j.min_deg) {
+          if (status) {
+            status.textContent = `${j.label}: max must be greater than min.`;
+            status.style.color = '#f87171';
+          }
+          return;
+        }
+      }
+      btn.disabled = true;
+      if (status) {
+        status.textContent = 'Saving…';
+        status.style.color = '#7eb8ff';
+      }
+      try {
+        config = await api('/api/config/stick', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        for (const j of config.joints) {
+          const cur = sliderState[j.node] ?? 0;
+          sliderState[j.node] = Math.max(j.min_deg, Math.min(j.max_deg, cur));
+        }
+        buildSliders();
+        buildProceduralArm();
+        if (status) {
+          status.textContent = 'Saved — model and sliders updated.';
+          status.style.color = '#6ee7a0';
+        }
+      } catch (e) {
+        if (status) {
+          status.textContent = e.message;
+          status.style.color = '#f87171';
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function findNodeForJoint(root, jointCfg) {
+      const candidates = [jointCfg.node, ...(jointCfg.node_candidates || [])].filter(Boolean);
+      for (const name of candidates) {
+        let found = null;
+        root.traverse((o) => {
+          if (found || !o.name) return;
+          if (o.name === name || o.name.toLowerCase() === name.toLowerCase()) found = o;
+        });
+        if (found) return found;
+      }
+      for (const name of candidates) {
+        const low = name.toLowerCase();
+        let found = null;
+        root.traverse((o) => {
+          if (found || !o.name) return;
+          if (o.name.toLowerCase().includes(low)) found = o;
+        });
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function modelUrl(file) {
+      return '/' + file.split('/').map(encodeURIComponent).join('/');
+    }
+
+    function applyModelTransform(root) {
+      if (config.model_rotation_deg) {
+        const r = config.model_rotation_deg;
+        root.rotation.set(
+          (r[0] || 0) * RAD,
+          (r[1] || 0) * RAD,
+          (r[2] || 0) * RAD
+        );
+      }
+      const s = config.model_scale ?? 1;
+      if (s !== 1) root.scale.setScalar(s);
+    }
+
+    function bindJoints(root, formatLabel) {
+      const missing = [];
+      const matched = [];
+      for (const j of config.joints) {
+        const node = findNodeForJoint(root, j);
+        if (node) {
+          jointNodes[j.node] = node;
+          matched.push(`${j.label}→${node.name}`);
+        } else {
+          missing.push(j.node);
+        }
+      }
+      frameModel(root);
+      const names = listSceneNames(root);
+      const nodeDetails = document.getElementById('nodeDetails');
+      const nodeList = document.getElementById('nodeList');
+      if (nodeDetails && nodeList && names.length) {
+        nodeDetails.style.display = 'block';
+        nodeList.textContent = names.join('\n');
+      }
+      console.log(`${formatLabel} node names:`, names);
+      if (matched.length) console.log('Joint mapping:', matched);
+      const found = config.joints.length - missing.length;
+      if (missing.length) {
+        setModelInfo(
+          `${formatLabel} · ${found}/${config.joints.length} joints matched. Missing: ${missing.join(', ')}. Pick names from list below → edit config.json "node".`,
+          true
+        );
+      } else {
+        setModelInfo(`${formatLabel} · all joints matched (${matched.join(', ')})`);
+      }
+    }
+
+    async function loadGlb(url) {
+      const gltf = await new GLTFLoader().loadAsync(url);
+      armRoot.clear();
+      jointNodes = {};
+      armRoot.add(gltf.scene);
+      applyModelTransform(gltf.scene);
+      bindJoints(gltf.scene, 'GLB');
+    }
+
+    async function loadFbx(url) {
+      setModelInfo('Parsing FBX…');
+      const root = await new FBXLoader().loadAsync(url);
+      armRoot.clear();
+      jointNodes = {};
+      root.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((m) => { if (m) m.side = THREE.DoubleSide; });
+          }
+        }
+      });
+      armRoot.add(root);
+      applyModelTransform(root);
+      bindJoints(root, 'FBX');
+    }
+
+    async function loadCadModel() {
+      const kind = config.model;
+      const file = (config.model_file || config.glb_file || `models/arm.${kind}`).replace(/^\/+/, '');
+      const url = modelUrl(file);
+      if (kind === 'fbx') await loadFbx(url);
+      else await loadGlb(url);
+    }
+
+    function jointVerticalDeg(j) {
+      return (j.min_deg + j.max_deg) / 2;
+    }
+
+    function isInverted(j) {
+      return (j.sign ?? 1) === -1;
+    }
+
+    /** Slider / UI degrees (0 = limit switch). Wrist uses 0 = user-set phone zero. */
+    function fromMotorDeg(j, motorDeg) {
+      if (isWristJoint(j)) {
+        const steps = motorDeg * wristStepsPerDeg();
+        return Math.round(wristRelDegFromMotorSteps(steps));
+      }
+      if (isInverted(j)) return j.max_deg - motorDeg;
+      return motorDeg;
+    }
+
+    /** Degrees sent to ESP32 (0 = limit switch). Wrist sends absolute motor degrees from relative UI. */
+    function toMotorDeg(j, userDeg) {
+      if (isWristJoint(j)) return wristMotorDegFromRel(userDeg);
+      if (isInverted(j)) return j.max_deg - userDeg;
+      return userDeg;
+    }
+
+    function userToModelDeg(j, userDeg) {
+      const sign = j.sign ?? 1;
+      return (userDeg - jointVerticalDeg(j)) * sign;
+    }
+
+    function setJointAngle(jointCfg, userDegrees) {
+      const node = jointNodes[jointCfg.node];
+      if (!node || userDegrees == null || !Number.isFinite(userDegrees)) return;
+      const modelDeg = userToModelDeg(jointCfg, userDegrees);
+      const rad = modelDeg * RAD;
+      node.rotation.set(0, 0, 0);
+      if (jointCfg.axis === 'x') node.rotation.x = rad;
+      else if (jointCfg.axis === 'y') node.rotation.y = rad;
+      else node.rotation.z = rad;
+    }
+
+    function motorDegrees(motorId) {
+      if (!statusData?.motors) return 0;
+      const m = statusData.motors.find((x) => x.id === motorId);
+      return m?.degrees ?? 0;
+    }
+
+    function buildSliders() {
+      jointSliders.innerHTML = '';
+      for (const j of config.joints) {
+        const wrap = document.createElement('div');
+        wrap.className = 'joint';
+        const valId = `val_${j.node}`;
+        const vert = isWristJoint(j) ? 'rel to 0°' : `vertical @ ${Math.round(jointVerticalDeg(j))}°`;
+        wrap.innerHTML = `
+          <div class="joint-head">
+            <strong>${j.label}</strong> <span>${j.role} · ${vert}</span>
+            <span id="${valId}">0°</span>
+          </div>
+          <input type="range" min="${j.min_deg}" max="${j.max_deg}" step="1" value="0"
+                 data-node="${j.node}" data-motor="${j.motor}">
+        `;
+        jointSliders.appendChild(wrap);
+        const inp = wrap.querySelector('input');
+        sliderState[j.node] = 0;
+        dragging[j.node] = false;
+
+        inp.addEventListener('pointerdown', () => { dragging[j.node] = true; });
+        inp.addEventListener('pointerup', () => {
+          dragging[j.node] = false;
+          scheduleLiveMove(true);
+        });
+        inp.addEventListener('input', () => {
+          applyJointDegrees(j, +inp.value);
+          scheduleLiveMove();
+        });
+      }
+    }
+
+    function syncSlidersFromStatus() {
+      if (!config || !statusData) return;
+      const userAdjusting = dragJoint3d || Object.values(dragging).some(Boolean);
+      if (userAdjusting || pendingJoints || statusData.moving || ikPending || poseDriveActive) return;
+      for (const j of config.joints) {
+        const motorDeg = motorDegrees(j.motor);
+        const deg = Math.round(fromMotorDeg(j, motorDeg));
+        applyJointDegrees(j, deg);
+      }
+    }
+
+    function formatStatus(d) {
+      if (!d) return 'No data';
+      if (d.homing) return `Homing M${d.homingMotor + 1}…`;
+      if (d.moving) return 'Moving…';
+      if (d.fail) return `FAILED: ${d.fail}`;
+      if (d.moveFail) return `Move failed: ${d.moveFail}`;
+      const parts = (d.motors || []).map((m) =>
+        `M${m.id + 1}${m.homed ? '✓' : '—'} ${m.steps ?? 0}st (${Math.round(m.degrees ?? 0)}°)`
+      );
+      return d.allHomed ? `All homed · ${parts.join(' · ')}` : parts.join(' · ');
+    }
+
+    function formatMoveStepsStatus(d) {
+      if (!d) return 'Move: idle';
+      if (d.moving) return 'Move: running…';
+      if (d.moveFail) return `Move: FAILED — ${d.moveFail}`;
+      if (d.homing) return 'Move: waiting (homing)…';
+      const parts = (d.motors || []).map((m) => `M${m.id + 1}=${m.steps ?? 0}`);
+      return `Move: idle · ${parts.join(' · ')}`;
+    }
+
+    function updateMotorPanelsFromStatus(d) {
+      if (!d?.motors) return;
+      for (const m of d.motors) {
+        const def = MOTORS.find((x) => x.id === m.id);
+        if (!def?.limitGpio) continue;
+        const led = document.getElementById(`led${m.id}`);
+        const limLabel = document.getElementById(`limLabel${m.id}`);
+        const limRaw = document.getElementById(`limRaw${m.id}`);
+        const st = document.getElementById(`motorSt${m.id}`);
+        const cal = document.getElementById(`cal${m.id}`);
+        if (led) led.className = `led ${m.limitRaw ? 'pressed' : 'open'}`;
+        if (limLabel) limLabel.textContent = m.limitRaw ? 'LIMIT PRESSED' : 'Limit open (not pressed)';
+        if (limRaw) {
+          limRaw.textContent = `GPIO${def.limitGpio} raw:${m.limitRaw ? 'LOW' : 'HIGH'}${m.homed ? ' · homed' : ''}`;
+        }
+        if (d.homing && d.homingMotor === m.id) {
+          if (cal) cal.disabled = true;
+          if (st && !active[m.id]) st.textContent = `Calibrating… ${m.seekSteps || 0} steps`;
+        } else {
+          if (cal) cal.disabled = !!(d.homing || d.moving);
+          if (m.homed && st && st.textContent.startsWith('Calibrat')) st.textContent = 'Homed at 0';
+          if (d.fail === 'max_steps' && d.homingMotor === m.id && st) st.textContent = 'Failed — never hit limit';
+        }
+      }
+    }
+
+    function setControlsDisabled(d) {
+      const busy = !!(d?.homing || d?.moving);
+      homeBtn.disabled = busy;
+      if (twinHomeBtn) twinHomeBtn.disabled = busy;
+      moveStepsBtn.disabled = busy;
+      stopAllBtn.disabled = false;
+      if (twinStopBtn) twinStopBtn.disabled = false;
+      motorPanels.querySelectorAll('.btn-cw, .btn-ccw').forEach((b) => { b.disabled = busy; });
+      if (!d?.homing) {
+        motorPanels.querySelectorAll('.btn-cal').forEach((b) => { b.disabled = busy; });
+      }
+    }
+
+    function parseApiError(text, status) {
+      let detail = text || '';
+      try {
+        const j = JSON.parse(text);
+        detail = typeof j.detail === 'string' ? j.detail : text;
+      } catch (_) { /* plain text */ }
+      if (status === 404 && (detail === 'Not Found' || detail.includes('Not Found'))) {
+        return 'Twin server is outdated — stop it (Ctrl+C) and run: python main.py';
+      }
+      return detail || 'Request failed';
+    }
+
+    async function api(path, opts = {}) {
+      const r = await fetch(path, opts);
+      if (!r.ok) {
+        const t = await r.text();
+        throw new Error(parseApiError(t, r.status));
+      }
+      const ct = r.headers.get('content-type') || '';
+      return ct.includes('json') ? r.json() : r.text();
+    }
+
+    async function apiPost(path, params = {}) {
+      const q = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null) q.set(k, String(v));
+      }
+      const url = q.toString() ? `${path}?${q}` : path;
+      return api(url, { method: 'POST' });
+    }
+
+    async function pollStatus() {
+      if (!anyMotorHeld()) {
+        try {
+          statusData = await api('/api/status');
+          connDot.className = 'ok';
+          statusLine.classList.remove('err');
+          statusLine.textContent = formatStatus(statusData);
+          if (moveStepsStatus) moveStepsStatus.textContent = formatMoveStepsStatus(statusData);
+          setControlsDisabled(statusData);
+          updateMotorPanelsFromStatus(statusData);
+          updateTwinCalibUI();
+          syncSlidersFromStatus();
+          if (!statusData.moving && !statusData.homing && pendingJoints && canLiveDrive()) {
+            flushLiveMove();
+          }
+        } catch (e) {
+          connDot.className = 'bad';
+          statusLine.classList.add('err');
+          statusLine.textContent = `ESP32 unreachable — same WiFi as arm · ${e.message}`;
+          homeBtn.disabled = true;
+          moveStepsBtn.disabled = true;
+          if (twinHomeBtn) twinHomeBtn.disabled = true;
+        }
+      }
+      const ms = statusData?.homing || statusData?.moving ? 120 : 300;
+      setTimeout(pollStatus, ms);
+    }
+
+    async function doHomeAll() {
+      await stopAllMotors();
+      pendingJoints = null;
+      try {
+        await api('/api/home', { method: 'POST' });
+        statusLine.textContent = 'Homing started…';
+        twinCalibStatus.textContent = 'Homing…';
+        setTwinDriveStatus('Homing…', 'warn');
+      } catch (e) {
+        statusLine.classList.add('err');
+        statusLine.textContent = e.message;
+        setTwinDriveStatus(e.message, 'err');
+      }
+    }
+
+    homeBtn.addEventListener('click', doHomeAll);
+    if (twinHomeBtn) twinHomeBtn.addEventListener('click', doHomeAll);
+
+    stopAllBtn.addEventListener('click', () => stopAllMotors());
+    if (twinStopBtn) twinStopBtn.addEventListener('click', () => stopAllMotors());
+
+    if (liveDriveInput) {
+      liveDriveInput.addEventListener('change', () => {
+        liveDrive = liveDriveInput.checked;
+        if (liveDrive && canLiveDrive()) {
+          setTwinDriveStatus('Live drive on');
+          scheduleLiveMove(true);
+        } else if (!liveDrive) {
+          setTwinDriveStatus('Live drive off — preview only');
+          pendingJoints = null;
+        } else {
+          setTwinDriveStatus('Home required before live drive.', 'warn');
+          liveDriveInput.checked = false;
+          liveDrive = false;
+        }
+      });
+    }
+
+    moveStepsBtn.addEventListener('click', async () => {
+      await stopAllMotors();
+      const params = {};
+      for (const m of MOTORS) {
+        const v = document.getElementById(`steps_${m.id}`)?.value?.trim();
+        if (v) params[`m${m.id}`] = +v;
+      }
+      if (!Object.keys(params).length) {
+        moveStepsStatus.textContent = 'Move: enter at least one target';
+        return;
+      }
+      moveStepsStatus.textContent = 'Move: starting…';
+      try {
+        await api('/api/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+        });
+        moveStepsStatus.textContent = 'Move: commanded…';
+      } catch (e) {
+        moveStepsStatus.textContent = `Move: FAILED — ${e.message}`;
+      }
+    });
+
+    function resize() {
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', resize);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      if (ikMode && ikPending?.point) updateIkPreviewLine(ikPending.point);
+      renderer.render(scene, camera);
+    }
+
+    async function loadCadModelWithTimeout(ms = 60000) {
+      return Promise.race([
+        loadCadModel(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Model load timeout')), ms)),
+      ]);
+    }
+
+    async function checkServerVersion() {
+      try {
+        const h = await api('/api/health');
+        if (!h.motor_control) {
+          statusLine.textContent = 'Twin server missing motor control — restart main.py';
+          statusLine.classList.add('err');
+        }
+      } catch (e) {
+        statusLine.textContent = e.message;
+        statusLine.classList.add('err');
+      }
+    }
+
+    async function setupWristCamViewer() {
+      const urlPc = document.getElementById('wristCamUrlPc');
+      const urlPhone = document.getElementById('wristCamUrlPhone');
+      const statusEl = document.getElementById('wristCamStatus');
+      const preview = document.getElementById('wristCamPreview');
+      const previewWrap = document.getElementById('wristCamPreviewWrap');
+      const handOverlay = document.getElementById('wristCamHandOverlay');
+      const pip = document.getElementById('wristCamPip');
+      const pipImg = document.getElementById('wristCamPipImg');
+      const pipHandOverlay = document.getElementById('wristCamPipHandOverlay');
+      const pipLabel = document.getElementById('wristCamPipLabel');
+      const pipToggle = document.getElementById('wristCamPipToggle');
+      if (!urlPhone || !preview) return;
+
+      const { drawTracksOnCanvas } = await import('/static/hand-track.js');
+      const handOverlayCtx = handOverlay?.getContext('2d');
+      const pipHandOverlayCtx = pipHandOverlay?.getContext('2d');
+      let lastHandState = null;
+      let lastFaceState = null;
+      let lastPoseState = null;
+      let liveMsg = 'Phone not connected';
+
+      const poseDriveInput = document.getElementById('poseDrive');
+      const poseInvertShoulder = document.getElementById('poseInvertShoulder');
+      const poseInvertElbow = document.getElementById('poseInvertElbow');
+      const poseStatusEl = document.getElementById('poseStatus');
+      let poseSmoothShoulder = null;
+      let poseSmoothElbow = null;
+      const POSE_SMOOTH = 0.35;
+
+      function setPoseStatus(msg) {
+        if (poseStatusEl) poseStatusEl.textContent = msg;
+      }
+
+      poseDriveInput?.addEventListener('change', () => {
+        poseDriveActive = poseDriveInput.checked;
+        if (!poseDriveActive) {
+          poseSmoothShoulder = null;
+          poseSmoothElbow = null;
+          setPoseStatus('Thumb control off');
+        } else {
+          setPoseStatus('Thumb control on — hold your thumb up to the phone');
+        }
+      });
+
+      function mapAngleToJoint(j, frac, invert) {
+        const f = Math.max(0, Math.min(1, invert ? 1 - frac : frac));
+        return j.min_deg + f * (j.max_deg - j.min_deg);
+      }
+
+      function drivePoseToArm(pose) {
+        if (!poseDriveActive || !config) return;
+        if (!pose?.detected || pose.shoulder_angle == null || pose.elbow_angle == null) {
+          setPoseStatus('Thumb control on — no thumb detected by phone');
+          return;
+        }
+        const shoulderJoint = config.joints.find((j) => j.role === 'shoulder');
+        const elbowJoint = config.joints.find((j) => j.role === 'elbow');
+        if (!shoulderJoint || !elbowJoint) return;
+
+        // Shoulder = thumb MCP knuckle: elevation above horizontal, -90 (down) .. +90 (up).
+        const shoulderFrac = (pose.shoulder_angle + 90) / 180;
+        // Elbow = thumb IP knuckle: bend angle ~180 (straight) .. ~90 (fully bent).
+        const elbowFrac = (180 - pose.elbow_angle) / 90;
+
+        let shoulderDeg = mapAngleToJoint(shoulderJoint, shoulderFrac, poseInvertShoulder?.checked);
+        let elbowDeg = mapAngleToJoint(elbowJoint, elbowFrac, poseInvertElbow?.checked);
+
+        poseSmoothShoulder = poseSmoothShoulder == null
+          ? shoulderDeg
+          : poseSmoothShoulder + POSE_SMOOTH * (shoulderDeg - poseSmoothShoulder);
+        poseSmoothElbow = poseSmoothElbow == null
+          ? elbowDeg
+          : poseSmoothElbow + POSE_SMOOTH * (elbowDeg - poseSmoothElbow);
+
+        // Snap to 10° steps so small hand tremor doesn't constantly nudge the arm.
+        const sDeg = applyJointDegrees(shoulderJoint, Math.round(poseSmoothShoulder / 10) * 10);
+        const eDeg = applyJointDegrees(elbowJoint, Math.round(poseSmoothElbow / 10) * 10);
+        scheduleLiveMove();
+
+        const driving = canLiveDrive() ? 'driving motors' : 'preview only (home + live drive to move motors)';
+        setPoseStatus(`Arm: ${shoulderJoint.label} ${sDeg}° · ${elbowJoint.label} ${eDeg}° · ${driving}`);
+      }
+
+      function resizeHandOverlays() {
+        if (handOverlay && previewWrap) {
+          handOverlay.width = previewWrap.clientWidth;
+          handOverlay.height = previewWrap.clientHeight;
+        }
+        const pipWrap = document.getElementById('wristCamPipWrap');
+        if (pipHandOverlay && pipWrap) {
+          pipHandOverlay.width = pipWrap.clientWidth;
+          pipHandOverlay.height = pipWrap.clientHeight;
+        }
+      }
+
+      function trackStatusNote() {
+        const parts = [];
+        if (lastHandState?.detected) {
+          parts.push(`${lastHandState.hand_count} hand${lastHandState.hand_count === 1 ? '' : 's'}`);
+        }
+        if (lastFaceState?.detected) parts.push('face');
+        if (lastPoseState?.detected) parts.push('thumb');
+        return parts.length ? ` · ${parts.join(' + ')} tracked` : '';
+      }
+
+      function redrawTrackOverlays() {
+        resizeHandOverlays();
+        const hand = lastHandState || { detected: false, hand_count: 0, hands: [] };
+        const face = lastFaceState || { detected: false, face_count: 0, faces: [] };
+        const pose = lastPoseState || { detected: false, points: null };
+        const anyTrack = hand.detected || face.detected || pose.detected;
+        if (handOverlayCtx && handOverlay) {
+          if (!anyTrack) {
+            handOverlayCtx.clearRect(0, 0, handOverlay.width, handOverlay.height);
+          } else {
+            drawTracksOnCanvas(handOverlayCtx, hand, face, handOverlay.width, handOverlay.height, pose);
+          }
+        }
+        if (pipHandOverlayCtx && pipHandOverlay) {
+          if (!anyTrack) {
+            pipHandOverlayCtx.clearRect(0, 0, pipHandOverlay.width, pipHandOverlay.height);
+          } else {
+            drawTracksOnCanvas(pipHandOverlayCtx, hand, face, pipHandOverlay.width, pipHandOverlay.height, pose);
+          }
+        }
+        if (statusEl) statusEl.textContent = liveMsg + trackStatusNote();
+      }
+
+      function applyHandOverlay(state) {
+        lastHandState = state;
+        redrawTrackOverlays();
+      }
+
+      function applyFaceOverlay(state) {
+        lastFaceState = state;
+        redrawTrackOverlays();
+      }
+
+      function applyPoseOverlay(state) {
+        lastPoseState = state;
+        redrawTrackOverlays();
+        drivePoseToArm(state);
+      }
+
+      async function pollHand() {
+        try {
+          const h = await api('/api/wrist-camera/hand');
+          if (h.age_sec == null || h.age_sec < 2) applyHandOverlay(h);
+          else if (!h.detected) applyHandOverlay({ detected: false, hand_count: 0, hands: [] });
+        } catch (_) { /* ok */ }
+      }
+
+      async function pollFace() {
+        try {
+          const f = await api('/api/wrist-camera/face');
+          if (f.age_sec == null || f.age_sec < 2) applyFaceOverlay(f);
+          else if (!f.detected) applyFaceOverlay({ detected: false, face_count: 0, faces: [] });
+        } catch (_) { /* ok */ }
+      }
+
+      async function pollPose() {
+        try {
+          const p = await api('/api/wrist-camera/pose');
+          if (p.age_sec == null || p.age_sec < 2) applyPoseOverlay(p);
+          else if (!p.detected) applyPoseOverlay({ detected: false, side: null, shoulder_angle: null, elbow_angle: null, points: null });
+        } catch (_) { /* ok */ }
+      }
+
+      if (previewWrap) {
+        new ResizeObserver(resizeHandOverlays).observe(previewWrap);
+      }
+      const pipWrap = document.getElementById('wristCamPipWrap');
+      if (pipWrap) new ResizeObserver(resizeHandOverlays).observe(pipWrap);
+
+      let phoneWristUrl = `${location.protocol}//${location.host}/wrist-camera`;
+      try {
+        const net = await api('/api/network');
+        if (urlPc) {
+          urlPc.innerHTML = `<span style="color:#8b93a7">PC only:</span> <a href="${net.pc_twin}">${net.pc_twin}</a>`;
+        }
+        if (net.phone_wrist_camera) {
+          phoneWristUrl = net.phone_wrist_camera;
+          urlPhone.innerHTML = `<span style="color:#8b93a7">Phone (wrist cam):</span> <a href="${phoneWristUrl}">${phoneWristUrl}</a>`;
+          if (net.iphone_note && net.https) {
+            urlPhone.innerHTML += `<div class="dim-hint" style="margin-top:.35rem;color:#fbbf24">${net.iphone_note}</div>`;
+          }
+        } else {
+          urlPhone.innerHTML = '<span style="color:#f87171">Could not detect LAN IP — use http://YOUR-PC-IP:8000/wrist-camera</span>';
+        }
+      } catch (_) {
+        if (urlPc) urlPc.innerHTML = `<span style="color:#8b93a7">PC only:</span> <a href="http://localhost:8000">http://localhost:8000</a>`;
+        urlPhone.innerHTML = `<span style="color:#8b93a7">Phone:</span> use http://&lt;PC-IP&gt;:8000/wrist-camera`;
+      }
+
+      let ws = null;
+      let blobUrl = null;
+      let reconnectTimer = null;
+      let pollTimer = null;
+      let statusTimer = null;
+      let lastFrameCount = 0;
+
+      function setWristStatus(msg, live = false) {
+        liveMsg = msg;
+        if (statusEl) statusEl.textContent = msg + trackStatusNote();
+        if (pipLabel) {
+          pipLabel.textContent = live ? 'Wrist cam · live' : 'Wrist cam · waiting';
+          pipLabel.classList.toggle('live', live);
+        }
+      }
+
+      async function showFrameFromUrl(url) {
+        preview.src = url;
+        if (pipImg) pipImg.src = url;
+        if (pipToggle?.checked) pip?.removeAttribute('hidden');
+      }
+
+      function showFrame(blob) {
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
+        blobUrl = URL.createObjectURL(blob);
+        preview.src = blobUrl;
+        if (pipImg) pipImg.src = blobUrl;
+        if (pipToggle?.checked) pip?.removeAttribute('hidden');
+      }
+
+      async function pollStatus() {
+        try {
+          const st = await api('/api/wrist-camera/status');
+          if (st.frame_count > lastFrameCount) {
+            lastFrameCount = st.frame_count;
+            const url = `/api/wrist-camera/frame?t=${Date.now()}`;
+            await showFrameFromUrl(url);
+            setWristStatus(`Live · ${st.frame_count} frames from phone`, true);
+          } else if (st.has_frame && st.seconds_since_frame != null && st.seconds_since_frame < 3) {
+            const url = `/api/wrist-camera/frame?t=${Date.now()}`;
+            await showFrameFromUrl(url);
+            setWristStatus(`Live · ${st.frame_count} frames`, true);
+          } else if (st.publisher_connected) {
+            setWristStatus('Phone connected — waiting for frames (check camera permission on phone)');
+          } else if (st.frame_count > 0) {
+            setWristStatus(`Last frame ${st.seconds_since_frame ?? '?'}s ago — reopen wrist camera on phone`);
+          } else {
+            setWristStatus('Waiting for phone — open wrist-camera link and tap Start');
+          }
+        } catch (_) {
+          setWristStatus('Cannot reach wrist camera API — is main.py running?');
+        }
+      }
+
+      function connect() {
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${proto}//${location.host}/ws/wrist-camera`);
+        ws.binaryType = 'arraybuffer';
+        ws.onopen = () => ws.send(JSON.stringify({ role: 'view' }));
+        ws.onmessage = async (ev) => {
+          if (ev.data instanceof ArrayBuffer) {
+            showFrame(new Blob([ev.data], { type: 'image/jpeg' }));
+            setWristStatus('Live from wrist camera (WebSocket)', true);
+          } else if (ev.data instanceof Blob) {
+            showFrame(ev.data);
+            setWristStatus('Live from wrist camera (WebSocket)', true);
+          } else if (typeof ev.data === 'string') {
+            try {
+              const msg = JSON.parse(ev.data);
+              if (msg.type === 'ready' && msg.has_frame) setWristStatus('Connected — receiving frames', true);
+              else if (msg.type === 'ready') setWristStatus('Connected — waiting for phone to start camera');
+              else if (msg.type === 'hand') applyHandOverlay(msg);
+              else if (msg.type === 'face') applyFaceOverlay(msg);
+              else if (msg.type === 'pose') applyPoseOverlay(msg);
+            } catch (_) { /* ok */ }
+          }
+        };
+        ws.onclose = () => {
+          reconnectTimer = setTimeout(connect, 3000);
+        };
+        ws.onerror = () => { /* poll fallback handles display */ };
+      }
+
+      pipToggle?.addEventListener('change', () => {
+        if (!pipToggle.checked) pip?.setAttribute('hidden', '');
+        else if (preview.src) pip?.removeAttribute('hidden');
+      });
+
+      preview.addEventListener('error', () => {
+        preview.alt = 'No frame yet';
+      });
+
+      connect();
+      pollStatus();
+      pollHand();
+      pollFace();
+      pollPose();
+      statusTimer = setInterval(pollStatus, 2000);
+      pollTimer = setInterval(pollStatus, 400);
+      setInterval(pollHand, 250);
+      setInterval(pollFace, 250);
+      setInterval(pollPose, 150);
+    }
+
+    async function init() {
+      setModelInfo('Loading config…');
+      setupTabs();
+      setupServoPanel();
+      setupMotorDiag();
+      setupWristZeroUi();
+      setupIkWristRot();
+      buildStepInputs();
+      buildMotorPanels();
+      await checkServerVersion();
+      config = await api('/api/config');
+      fillStickForm();
+      document.getElementById('stickSaveBtn')?.addEventListener('click', saveStickModel);
+      buildIkVisuals();
+      document.getElementById('ikMode')?.addEventListener('change', (e) => {
+        ikMode = e.target.checked;
+        if (!ikMode) {
+          clearIkPending(true);
+          setIkVisualsActive(false);
+          setIkStatus('IK off — enable to pick targets');
+        } else {
+          setIkVisualsActive(true);
+          setIkStatus('Pick a height (or All) · hover a colored dot to lock on');
+        }
+      });
+      document.getElementById('ikConfirmBtn')?.addEventListener('click', confirmIkMove);
+      document.getElementById('ikCancelBtn')?.addEventListener('click', cancelIkPreview);
+      buildSliders();
+      setup3dJointDrag();
+      setupWristCamViewer();
+      await loadMotorSettings();
+      resize();
+      animate();
+      pollStatus();
+
+      if (config.model === 'procedural') {
+        buildProceduralArm();
+      } else if (config.model === 'glb' || config.model === 'fbx') {
+        setModelInfo(`Loading ${config.model_file}…`);
+        try {
+          await loadCadModelWithTimeout(60000);
+        } catch (e) {
+          console.warn('Model load failed:', e);
+          buildProceduralArm();
+          setModelInfo(`CAD load failed — using stick model`, true);
+        }
+      } else {
+        buildProceduralArm();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

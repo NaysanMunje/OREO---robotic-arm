@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model viewer (no ESP)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f1115;
+      color: #e8eaed;
+      display: grid;
+      grid-template-columns: 1fr min(380px, 100vw);
+      height: 100vh;
+      overflow: hidden;
+    }
+    #view { position: relative; min-width: 0; }
+    #panel {
+      border-left: 1px solid #2a2f3a;
+      background: #12151c;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    h1 { font-size: 1.05rem; margin: 0 0 .2rem; }
+    .sub { font-size: .78rem; color: #8b93a7; margin: 0 0 1rem; }
+    .card {
+      background: #1a1e28;
+      border: 1px solid #2a3140;
+      border-radius: 10px;
+      padding: .85rem;
+      margin-bottom: .75rem;
+    }
+    .card h2 { font-size: .88rem; margin: 0 0 .55rem; color: #b8c0d4; }
+    .check {
+      display: flex;
+      gap: .5rem;
+      align-items: flex-start;
+      font-size: .8rem;
+      margin-bottom: .45rem;
+      line-height: 1.35;
+    }
+    .check .icon { width: 1.1rem; flex-shrink: 0; font-weight: 700; }
+    .check.ok .icon { color: #22c55e; }
+    .check.bad .icon { color: #ef4444; }
+    .check.warn .icon { color: #fbbf24; }
+    .summary {
+      font-size: .82rem;
+      color: #7eb8ff;
+      margin-top: .5rem;
+      padding-top: .5rem;
+      border-top: 1px solid #2a3140;
+    }
+    .summary.bad { color: #f87171; }
+    pre {
+      font-size: .68rem;
+      max-height: 9rem;
+      overflow: auto;
+      background: #0d1016;
+      padding: .5rem;
+      border-radius: 6px;
+      color: #9ab;
+      margin: .4rem 0 0;
+    }
+    .joint { margin-bottom: .65rem; }
+    .joint-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: .78rem;
+      margin-bottom: .25rem;
+    }
+    input[type=range] { width: 100%; }
+    button {
+      width: 100%;
+      padding: .6rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: #1a5a7f;
+      margin-top: .35rem;
+    }
+    button.secondary { background: #333a48; }
+  </style>
+</head>
+<body>
+  <div id="view"></div>
+  <aside id="panel">
+    <h1>Fusion model test</h1>
+    <p class="sub">Standalone viewer · no ESP32 · edit <code>model_viewer/model_config.json</code></p>
+
+    <div class="card">
+      <h2>Checklist</h2>
+      <div id="checks"></div>
+      <div class="summary" id="summary">Running checks…</div>
+    </div>
+
+    <div class="card">
+      <h2>Why constraints break (FBX only)</h2>
+      <p style="font-size:.75rem;color:#9aa3b5;margin:0;line-height:1.45">
+        FBX ignores Fusion assembly joints. Use <strong>URDF</strong> (<code>model_config.json</code>
+        <code>"model": "urdf"</code>) to keep axes and limits. See
+        <code>model_viewer/FUSION_URDF.md</code>.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Joint bindings</h2>
+      <div id="bindings" style="font-size:.75rem;color:#9aa3b5">—</div>
+    </div>
+
+    <div class="card">
+      <h2>Joint sliders</h2>
+      <p style="font-size:.75rem;color:#6b7280;margin:0 0 .5rem">
+        Drag each slider — the correct link should rotate in 3D only.
+      </p>
+      <div id="sliders"></div>
+      <button type="button" class="secondary" id="resetBtn">Reset all to 0°</button>
+      <button type="button" id="reloadBtn">Reload model</button>
+    </div>
+
+    <div class="card">
+      <h2>URDF / FBX node names</h2>
+      <pre id="nodeNames">—</pre>
+    </div>
+  </aside>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/static/vendor/three/build/three.module.js",
+      "three/addons/": "/static/vendor/three/examples/jsm/",
+      "urdf-loader": "/static/vendor/urdf-loader/URDFLoader.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+    import URDFLoader from 'urdf-loader';
+
+    const RAD = Math.PI / 180;
+    let config = null;
+    let jointNodes = {};
+    let urdfRobot = null;
+
+    const wrap = document.getElementById('view');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f1115);
+    const camera = new THREE.PerspectiveCamera(50, 1, 1, 50000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    wrap.appendChild(renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const key = new THREE.DirectionalLight(0xffffff, 1.2);
+    key.position.set(3, 5, 4);
+    scene.add(key);
+    scene.add(new THREE.GridHelper(800, 40, 0x334155, 0x1e293b));
+
+    const armRoot = new THREE.Group();
+    scene.add(armRoot);
+
+    function listNames(root) {
+      const names = [];
+      root.traverse((o) => { if (o.name) names.push(o.name); });
+      return names;
+    }
+
+    function frameModel(object) {
+      const box = new THREE.Box3().setFromObject(object);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z, 1);
+      if (maxDim > 500 && !(config.model_scale > 0)) {
+        object.scale.multiplyScalar(1 / (maxDim / 200));
+        box.setFromObject(object);
+        box.getCenter(center);
+        box.getSize(size);
+      }
+      const dim = Math.max(size.x, size.y, size.z, 1);
+      const dist = dim * 2.2;
+      camera.position.set(center.x + dist, center.y + dim * 0.85, center.z + dist);
+      controls.target.copy(center);
+      controls.update();
+    }
+
+    function countMeshes(o) {
+      let n = o.isMesh ? 1 : 0;
+      for (const c of o.children) n += countMeshes(c);
+      return n;
+    }
+
+    function pathToRoot(o) {
+      const parts = [];
+      let cur = o;
+      while (cur && cur.type !== 'Scene') {
+        parts.unshift(cur.name || `(${cur.type})`);
+        cur = cur.parent;
+      }
+      return parts.join(' → ');
+    }
+
+    function nameMatches(objName, candidate) {
+      if (!objName || !candidate) return false;
+      if (objName === candidate || objName.toLowerCase() === candidate.toLowerCase()) return true;
+      return objName.toLowerCase().includes(candidate.toLowerCase());
+    }
+
+    function findNode(root, jointCfg) {
+      const candidates = [jointCfg.node, ...(jointCfg.node_candidates || [])].filter(Boolean);
+      const matches = [];
+      root.traverse((o) => {
+        if (!o.name) return;
+        for (const c of candidates) {
+          if (nameMatches(o.name, c)) {
+            matches.push(o);
+            break;
+          }
+        }
+      });
+      if (!matches.length) return null;
+
+      function score(o) {
+        let s = 0;
+        const meshes = countMeshes(o);
+        if (o.isGroup || o.type === 'Group') s += 40;
+        if (!o.isMesh) s += 15;
+        s += Math.min(meshes, 30) * 3;
+        if (o.isMesh && o.children.length === 0) s -= 50;
+        if (o.name === jointCfg.node) s += 20;
+        return s;
+      }
+
+      matches.sort((a, b) => score(b) - score(a));
+      let best = matches[0];
+      if (best.isMesh && countMeshes(best) <= 1 && best.parent) {
+        let cur = best.parent;
+        while (cur && cur.type !== 'Scene') {
+          if (countMeshes(cur) > 1) {
+            best = cur;
+            break;
+          }
+          cur = cur.parent;
+        }
+      }
+      return best;
+    }
+
+    function diagnoseBinding(node) {
+      if (!node) return { level: 'bad', text: 'not found' };
+      const meshes = countMeshes(node);
+      const isLeafMesh = node.isMesh && node.children.length === 0;
+      if (isLeafMesh && meshes <= 1) {
+        return {
+          level: 'warn',
+          text: `⚠ ${node.name} is a single mesh (likely wrong pivot). Nest components in Fusion.`,
+        };
+      }
+      if (meshes < 2) {
+        return { level: 'warn', text: `⚠ ${node.name} moves only 1 mesh — check Fusion hierarchy.` };
+      }
+      return { level: 'ok', text: `✓ ${node.name} (${node.type}, ${meshes} meshes in subtree)` };
+    }
+
+    function applyTransform(root) {
+      const r = config.model_rotation_deg;
+      if (r) root.rotation.set((r[0] || 0) * RAD, (r[1] || 0) * RAD, (r[2] || 0) * RAD);
+      const s = config.model_scale ?? 1;
+      if (s !== 1) root.scale.setScalar(s);
+    }
+
+    function jointKey(j) {
+      return j.urdf_joint || j.node || j.label;
+    }
+
+    function urdfJointCandidates(j) {
+      return [j.urdf_joint, ...(j.urdf_joint_candidates || [])].filter(Boolean);
+    }
+
+    function resolveUrdfJoint(robot, j) {
+      for (const name of urdfJointCandidates(j)) {
+        if (robot.joints[name]) return { name, joint: robot.joints[name] };
+      }
+      const low = (j.urdf_joint || '').toLowerCase();
+      for (const [name, joint] of Object.entries(robot.joints)) {
+        if (low && name.toLowerCase().includes(low)) return { name, joint };
+      }
+      return null;
+    }
+
+    function jointSliderLimits(j, urdfJoint) {
+      if (j.min_deg != null && j.max_deg != null) return [j.min_deg, j.max_deg];
+      if (urdfJoint?.limit) {
+        const lo = urdfJoint.limit.lower;
+        const hi = urdfJoint.limit.upper;
+        if (Number.isFinite(lo) && Number.isFinite(hi)) {
+          return [Math.round(lo * 180 / Math.PI), Math.round(hi * 180 / Math.PI)];
+        }
+      }
+      return [0, 180];
+    }
+
+    function setJointAngle(j, deg) {
+      const key = jointKey(j);
+      if (urdfRobot) {
+        const hit = resolveUrdfJoint(urdfRobot, j);
+        if (!hit) return;
+        const sign = j.sign ?? 1;
+        hit.joint.setJointValue(deg * RAD * sign);
+        jointNodes[key] = hit.joint;
+        return;
+      }
+      const node = jointNodes[j.node];
+      if (!node) return;
+      const sign = j.sign ?? 1;
+      const rad = deg * RAD * sign;
+      node.rotation.set(0, 0, 0);
+      if (j.axis === 'x') node.rotation.x = rad;
+      else if (j.axis === 'y') node.rotation.y = rad;
+      else node.rotation.z = rad;
+    }
+
+    function bindJoints(root) {
+      jointNodes = {};
+      const missing = [];
+      const bindingLines = [];
+      for (const j of config.joints) {
+        const node = findNode(root, j);
+        if (node) {
+          jointNodes[j.node] = node;
+          const d = diagnoseBinding(node);
+          bindingLines.push(
+            `<div class="check ${d.level}"><span class="icon">${d.level === 'ok' ? '✓' : '⚠'}</span>` +
+            `<span><strong>${j.label}</strong> ${d.text}<br><span style="color:#6b7280">${pathToRoot(node)}</span></span></div>`
+          );
+        } else {
+          missing.push(j.label);
+          bindingLines.push(`<div class="check bad"><span class="icon">✗</span><span><strong>${j.label}</strong> not found</span></div>`);
+        }
+      }
+      const bindEl = document.getElementById('bindings');
+      if (bindEl) bindEl.innerHTML = bindingLines.join('');
+      const useful = listNames(root).filter((n) =>
+        /body|joint|base|shoulder|elbow|arm|m[234]/i.test(n)
+      );
+      document.getElementById('nodeNames').textContent =
+        (useful.length ? useful : listNames(root)).join('\n') || '(no named nodes)';
+      return missing;
+    }
+
+    function bindUrdfJoints(robot) {
+      jointNodes = {};
+      const missing = [];
+      const bindingLines = [];
+      const revolute = Object.entries(robot.joints).filter(
+        ([, joint]) => joint.jointType === 'revolute' || joint.jointType === 'continuous'
+      );
+      for (const j of config.joints) {
+        const hit = resolveUrdfJoint(robot, j);
+        if (hit) {
+          jointNodes[jointKey(j)] = hit.joint;
+          const [lo, hi] = jointSliderLimits(j, hit.joint);
+          bindingLines.push(
+            `<div class="check ok"><span class="icon">✓</span><span><strong>${j.label}</strong> ` +
+            `URDF joint "${hit.name}" (${hit.joint.jointType}) · limits ${lo}°–${hi}°</span></div>`
+          );
+        } else {
+          missing.push(j.label);
+          bindingLines.push(
+            `<div class="check bad"><span class="icon">✗</span><span><strong>${j.label}</strong> ` +
+            `urdf_joint not found</span></div>`
+          );
+        }
+      }
+      const bindEl = document.getElementById('bindings');
+      if (bindEl) bindEl.innerHTML = bindingLines.join('');
+      document.getElementById('nodeNames').textContent =
+        revolute.map(([n, joint]) => `${n} (${joint.jointType})`).join('\n') || '(no revolute joints)';
+      return missing;
+    }
+
+    async function loadUrdf(url) {
+      const loader = new URDFLoader();
+      const pkgPath = (config.urdf_package_path || url.split('/').slice(1, -1).join('/')).replace(/^\/+/, '');
+      loader.packages = () => `/${pkgPath}`;
+      urdfRobot = await loader.loadAsync(url);
+      if (config.ros_z_up !== false) {
+        urdfRobot.rotation.x = -Math.PI / 2;
+      }
+      const s = config.model_scale ?? 1;
+      if (s !== 1) urdfRobot.scale.setScalar(s);
+      armRoot.add(urdfRobot);
+      return bindUrdfJoints(urdfRobot);
+    }
+
+    async function loadModel() {
+      armRoot.clear();
+      jointNodes = {};
+      urdfRobot = null;
+      const kind = config.model;
+      const file = (config.model_file || `models/arm.${kind}`).replace(/^\/+/, '');
+      const url = '/' + file.split('/').map(encodeURIComponent).join('/');
+
+      if (kind === 'urdf') {
+        const missing = await loadUrdf(url);
+        frameModel(armRoot);
+        return missing;
+      }
+
+      let root;
+      if (kind === 'fbx') {
+        root = await new FBXLoader().loadAsync(url);
+        root.traverse((c) => {
+          if (c.isMesh && c.material) {
+            const mats = Array.isArray(c.material) ? c.material : [c.material];
+            mats.forEach((m) => { if (m) m.side = THREE.DoubleSide; });
+          }
+        });
+      } else if (kind === 'glb') {
+        root = (await new GLTFLoader().loadAsync(url)).scene;
+      } else {
+        throw new Error(`Set model_config.json "model" to "fbx" or "glb"`);
+      }
+      applyTransform(root);
+      armRoot.add(root);
+      const missing = bindJoints(root);
+      frameModel(armRoot);
+      return missing;
+    }
+
+    function buildSliders() {
+      const el = document.getElementById('sliders');
+      el.innerHTML = '';
+      for (const j of config.joints) {
+        const key = jointKey(j);
+        const urdfJ = urdfRobot ? resolveUrdfJoint(urdfRobot, j)?.joint : null;
+        const [minD, maxD] = jointSliderLimits(j, urdfJ);
+        const matched = !!jointNodes[key] || !!urdfJ;
+        const row = document.createElement('div');
+        row.className = 'joint';
+        const valId = `v_${key}`;
+        row.innerHTML = `
+          <div class="joint-head">
+            <span>${j.label} ${j.role} ${matched ? '✓' : '✗ missing'}</span>
+            <span id="${valId}">0°</span>
+          </div>
+          <input type="range" min="${minD}" max="${maxD}" value="0"
+                 data-key="${key}" ${matched ? '' : 'disabled'}>`;
+        el.appendChild(row);
+        const inp = row.querySelector('input');
+        inp.addEventListener('input', () => {
+          const deg = +inp.value;
+          document.getElementById(valId).textContent = `${deg}°`;
+          setJointAngle(j, deg);
+        });
+      }
+    }
+
+    function renderChecks(report) {
+      const box = document.getElementById('checks');
+      box.innerHTML = '';
+      for (const c of report.checks || []) {
+        const div = document.createElement('div');
+        div.className = `check ${c.ok ? 'ok' : 'bad'}`;
+        div.innerHTML = `<span class="icon">${c.ok ? '✓' : '✗'}</span><span><strong>${c.name}</strong><br>${c.detail}</span>`;
+        box.appendChild(div);
+      }
+      for (const j of report.joint_checks || []) {
+        const div = document.createElement('div');
+        div.className = `check ${j.ok ? 'ok' : 'bad'}`;
+        const detail = j.ok
+          ? `${j.label}: found "${j.found}"`
+          : `${j.label}: expected "${j.expected}" — not in file`;
+        div.innerHTML = `<span class="icon">${j.ok ? '✓' : '✗'}</span><span>${detail}</span>`;
+        box.appendChild(div);
+      }
+      const sum = document.getElementById('summary');
+      sum.textContent = report.summary || '';
+      sum.classList.toggle('bad', !report.ready);
+    }
+
+    async function run() {
+      const report = await fetch('/api/model/test').then((r) => r.json());
+      config = await fetch('/api/config').then((r) => r.json());
+      renderChecks(report);
+      if (!report.file_exists) return;
+      try {
+        const missing = await loadModel();
+        buildSliders();
+        if (missing.length) {
+          document.getElementById('summary').textContent +=
+            ` Viewer missing: ${missing.join(', ')}.`;
+        }
+      } catch (e) {
+        document.getElementById('summary').textContent = `Load failed: ${e.message}`;
+        document.getElementById('summary').classList.add('bad');
+      }
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      for (const j of config.joints) {
+        const key = jointKey(j);
+        const inp = document.querySelector(`input[data-key="${key}"]`);
+        if (inp) { inp.value = 0; inp.dispatchEvent(new Event('input')); }
+      }
+    });
+    document.getElementById('reloadBtn').addEventListener('click', run);
+
+    function resize() {
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', resize);
+    function tick() {
+      requestAnimationFrame(tick);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    resize();
+    tick();
+    run();
+  </script>
+</body>
+</html>

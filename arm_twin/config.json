@@ -1,0 +1,80 @@
+{
+  "esp32_url": "http://arm.local",
+  "servo": {
+    "port": "COM5",
+    "baud": 115200
+  },
+  "steps_per_degree": [
+    12.222222,
+    22.222222,
+    22.222222,
+    27.777778
+  ],
+  "wrist": {
+    "steps_per_90": 1100
+  },
+  "gear_ratios": {
+    "M1": 1,
+    "M2": 20,
+    "M3": 20,
+    "M4": 25
+  },
+  "model": "procedural",
+  "links_mm": {
+    "base_plate_diameter": 200.0,
+    "base_plate_height": 27.0,
+    "shoulder_offset": 63.37,
+    "base_height": 90.37,
+    "upper_arm": 187.0,
+    "forearm": 122.0,
+    "gripper": 0.0,
+    "link_radius": 5.0,
+    "base_plate_radius": 100.0
+  },
+  "joints": [
+    {
+      "motor": 0,
+      "label": "M1",
+      "role": "wrist",
+      "node": "joint_m1",
+      "axis": "y",
+      "min_deg": -180.0,
+      "max_deg": 180.0,
+      "home_deg": 0.0
+    },
+    {
+      "motor": 3,
+      "label": "M4",
+      "role": "base",
+      "node": "joint_m4",
+      "axis": "y",
+      "min_deg": 0.0,
+      "max_deg": 152.0,
+      "home_deg": 76.0,
+      "limit_at_deg": 0
+    },
+    {
+      "motor": 1,
+      "label": "M2",
+      "role": "shoulder",
+      "node": "joint_m2",
+      "axis": "z",
+      "sign": -1,
+      "min_deg": 0.0,
+      "max_deg": 180.0,
+      "home_deg": 90.0,
+      "limit_at_deg": 0
+    },
+    {
+      "motor": 2,
+      "label": "M3",
+      "role": "elbow",
+      "node": "joint_m3",
+      "axis": "z",
+      "min_deg": 0.0,
+      "max_deg": 223.0,
+      "home_deg": 111.5,
+      "limit_at_deg": 0
+    }
+  ]
+}

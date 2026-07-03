@@ -1,0 +1,13 @@
+{
+  "autodeskProduct": "Fusion360",
+  "type": "addin",
+  "id": "a7c3b2e1-4f58-4d9a-b6e1-2c8d4e6f9012",
+  "author": "arm-project",
+  "description": {
+    "": "Generate eccentric helical lobe gears (meshing wave-tooth gears, not pin-type cycloidal reducers)."
+  },
+  "version": "1.2.0",
+  "runOnStartup": true,
+  "supportedOS": "windows|mac",
+  "editEnabled": true
+}

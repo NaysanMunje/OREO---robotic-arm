@@ -1,0 +1,34 @@
+{
+  "model": "urdf",
+  "model_file": "models/arm/robot.urdf",
+  "urdf_package": "robot_description",
+  "urdf_package_path": "models/arm",
+  "ros_z_up": true,
+  "model_scale": 1,
+  "joints": [
+    {
+      "label": "M4",
+      "role": "base",
+      "urdf_joint": "joint_base",
+      "urdf_joint_candidates": ["base_joint", "joint_m4"],
+      "min_deg": 0,
+      "max_deg": 152
+    },
+    {
+      "label": "M2",
+      "role": "shoulder",
+      "urdf_joint": "joint_shoulder",
+      "urdf_joint_candidates": ["shoulder_joint", "joint_m2"],
+      "min_deg": 0,
+      "max_deg": 130
+    },
+    {
+      "label": "M3",
+      "role": "elbow",
+      "urdf_joint": "joint_elbow",
+      "urdf_joint_candidates": ["elbow_joint", "joint_m3"],
+      "min_deg": 0,
+      "max_deg": 200
+    }
+  ]
+}

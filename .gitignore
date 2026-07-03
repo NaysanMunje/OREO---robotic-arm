@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Arm twin runtime
+arm_twin/server_log.txt
+arm_twin/certs/*.pem
+!arm_twin/certs/.gitkeep
+
+# ESP32 secrets (copy from wifi_secrets.h.example)
+esp32_dm542_stepper_test/include/wifi_secrets.h
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log
